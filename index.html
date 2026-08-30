@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>RCY Training 2026 — Event Gallery</title>
+<meta name="theme-color" content="#FFFBF8" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="bg-cream font-body text-ink-900 min-h-screen">
+
+  <div class="max-w-md mx-auto min-h-screen bg-cream sm:shadow-soft flex flex-col">
+    <div id="heroSlot"></div>
+
+    <main class="flex-1 px-6 pt-7 pb-8 flex flex-col">
+      <div id="quickFactsSlot" class="flex items-center gap-3 text-[12.5px] text-ink-400 mb-4"></div>
+
+      <p class="text-[13px] text-ink-400 mb-1">Welcome, we're glad you're here</p>
+      <h2 class="font-display font-semibold text-2xl text-ink-900 mb-6">What's your name?</h2>
+
+      <form id="nameForm" class="space-y-3" novalidate>
+        <label for="nameInput" class="sr-only">Your name</label>
+        <input id="nameInput" type="text" autocomplete="name" placeholder="Your name" maxlength="40" required
+          aria-describedby="nameNoAccountHint"
+          class="w-full rounded-2xl border border-ink-200 bg-white px-5 py-4 text-[16px] placeholder:text-ink-300
+                 focus:border-primary-400 focus:ring-0 shadow-soft" />
+        <button type="submit" id="enterBtn" disabled
+          class="w-full py-4 rounded-2xl bg-primary-500 disabled:bg-ink-200 disabled:text-ink-400 text-white font-semibold text-[16px]
+                 shadow-lift disabled:shadow-none active:scale-[.98] transition-all">
+          Continue
+        </button>
+      </form>
+
+      <p id="nameNoAccountHint" class="flex items-center justify-center gap-1.5 text-[13px] text-ink-400 mt-4">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4.5 8-11V5l-8-3-8 3v6c0 6.5 8 11 8 11Z"/></svg>
+        No account needed \u2014 just your name.
+      </p>
+
+      <div id="returningGuestSlot" class="mt-6 hidden"></div>
+
+      <div class="mt-auto pt-10">
+        <button type="button" id="eventInfoToggle" class="w-full flex items-center justify-between text-left py-3.5 border-t border-ink-100">
+          <span class="text-sm font-semibold text-ink-600">Event details</span>
+          <svg id="eventInfoChevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="text-ink-400 transition-transform"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div id="eventInfoPanel" class="hidden text-[13px] text-ink-500 space-y-1.5 pb-2 leading-relaxed"></div>
+      </div>
+    </main>
+  </div>
+
+<script src="js/mockData.js"></script>
+<script src="js/api.js"></script>
+<script src="js/components/header.js"></script>
+<script src="js/pages/welcome.js"></script>
+</body>
+</html>

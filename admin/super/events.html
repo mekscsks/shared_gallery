@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Events — Super Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../../js/tailwind-config.js"></script>
+<link rel="stylesheet" href="../../css/styles.css" />
+</head>
+<body class="font-body text-ink-900">
+<div id="shellSlot"></div>
+<script src="../../js/mockData.js"></script>
+<script src="../../js/api.js"></script>
+<script>App.session.requireSuperAdminOrRedirect();</script>
+<script src="../../js/components/sheetsAndToasts.js"></script>
+<script src="../../js/components/superShell.js"></script>
+<script>
+(function () {
+  document.getElementById('shellSlot').innerHTML =
+    App.components.superShell('events', 'Events', 'Manage all events');
+
+  const el = document.getElementById('superPageContent');
+
+  // --- State ---
+  let allEvents = [];
+  let filterStatus = '';
+  let searchQ = '';
+
+  // --- Create Event Modal ---
+  function createModal() {
+    return `
+    <div id="createEventModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 hidden">
+      <div class="bg-white rounded-3xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <h2 class="font-display font-semibold text-xl">Create Event</h2>
+        <div id="createEventError" class="hidden text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2"><label class="label">Event Name *</label><input id="ce_name" class="input" placeholder="RCY Training 2026" /></div>
+          <div class="col-span-2"><label class="label">Slug *</label><input id="ce_slug" class="input" placeholder="rcy-training-2026" /></div>
+          <div class="col-span-2"><label class="label">Description</label><textarea id="ce_desc" class="input" rows="2"></textarea></div>
+          <div><label class="label">Event Date</label><input id="ce_date" type="date" class="input" /></div>
+          <div><label class="label">Location</label><input id="ce_location" class="input" /></div>
+          <div><label class="label">Status</label>
+            <select id="ce_status" class="input">
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+            </select>
+          </div>
+          <div><label class="label">Primary Color</label><input id="ce_primary" type="color" value="#C8102E" class="input h-10 p-1" /></div>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button id="createEventCancel" class="flex-1 py-2.5 rounded-2xl border border-ink-200 text-sm font-semibold">Cancel</button>
+          <button id="createEventSubmit" class="flex-1 py-2.5 rounded-2xl bg-ink-900 text-white text-sm font-semibold">Create Event</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderToolbar() {
+    return `
+    <div class="flex flex-wrap gap-3 mb-5">
+      <input id="eventSearch" type="search" placeholder="Search events…" value="${searchQ}"
+        class="flex-1 min-w-[180px] rounded-xl border border-ink-200 px-4 py-2 text-sm" />
+      <div class="flex gap-1 flex-wrap">
+        ${['','active','draft','archived','disabled'].map(s => `
+          <button data-status="${s}" class="status-filter px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors
+            ${filterStatus === s ? 'bg-ink-900 text-white border-ink-900' : 'border-ink-200 text-ink-600 hover:border-ink-400'}">
+            ${s || 'All'}
+          </button>`).join('')}
+      </div>
+      <button id="openCreateEvent" class="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold">+ Create Event</button>
+    </div>`;
+  }
+
+  function statusBadge(status) {
+    const map = { active:'bg-green-100 text-green-700', draft:'bg-yellow-100 text-yellow-700',
+                  archived:'bg-ink-100 text-ink-500', disabled:'bg-red-100 text-red-600' };
+    return `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${map[status]||'bg-ink-100'}">${status}</span>`;
+  }
+
+  function renderTable(events) {
+    if (!events.length) return `<p class="text-ink-400 text-sm py-8 text-center">No events found.</p>`;
+    return `
+    <div class="bg-white rounded-2xl border border-ink-100 shadow-soft overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-[12px] font-semibold text-ink-400 border-b border-ink-100">
+          <th class="px-5 py-3">Event</th><th class="px-5 py-3">Date</th>
+          <th class="px-5 py-3">Status</th><th class="px-5 py-3">Admins</th>
+          <th class="px-5 py-3">Guests</th><th class="px-5 py-3">Photos</th>
+          <th class="px-5 py-3">Actions</th>
+        </tr></thead>
+        <tbody>
+          ${events.map(e => `
+          <tr class="border-b border-ink-50 hover:bg-sand/50">
+            <td class="px-5 py-3">
+              <p class="font-semibold">${e.name}</p>
+              <p class="text-ink-400 text-xs">${e.slug}</p>
+            </td>
+            <td class="px-5 py-3 text-ink-500">${e.date || '—'}</td>
+            <td class="px-5 py-3">${statusBadge(e.status)}</td>
+            <td class="px-5 py-3">${e.assigned_admin_count}</td>
+            <td class="px-5 py-3">${e.guest_count}</td>
+            <td class="px-5 py-3">${e.photo_count}</td>
+            <td class="px-5 py-3">
+              <div class="flex gap-2">
+                <a href="event-detail.html?id=${e.id}" class="text-xs font-semibold text-primary-600 hover:underline">View</a>
+                ${e.status === 'archived'
+                  ? `<button data-restore="${e.id}" class="text-xs font-semibold text-green-600 hover:underline">Restore</button>`
+                  : `<button data-archive="${e.id}" class="text-xs font-semibold text-red-500 hover:underline">Archive</button>`}
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }
+
+  function filtered() {
+    return allEvents.filter(e => {
+      const matchStatus = !filterStatus || e.status === filterStatus;
+      const matchSearch = !searchQ || e.name.toLowerCase().includes(searchQ.toLowerCase()) || e.slug.includes(searchQ.toLowerCase());
+      return matchStatus && matchSearch;
+    });
+  }
+
+  function render() {
+    el.innerHTML = renderToolbar() + renderTable(filtered()) + createModal();
+    bindEvents();
+  }
+
+  function bindEvents() {
+    document.getElementById('eventSearch').addEventListener('input', e => { searchQ = e.target.value; render(); });
+    document.querySelectorAll('.status-filter').forEach(btn => {
+      btn.addEventListener('click', () => { filterStatus = btn.dataset.status; render(); });
+    });
+    document.getElementById('openCreateEvent').addEventListener('click', () => {
+      document.getElementById('createEventModal').classList.remove('hidden');
+    });
+    document.getElementById('createEventCancel').addEventListener('click', () => {
+      document.getElementById('createEventModal').classList.add('hidden');
+    });
+    document.getElementById('createEventSubmit').addEventListener('click', async () => {
+      const errEl = document.getElementById('createEventError');
+      errEl.classList.add('hidden');
+      const name = document.getElementById('ce_name').value.trim();
+      const slug = document.getElementById('ce_slug').value.trim();
+      if (!name || !slug) { errEl.textContent = 'Name and slug are required.'; errEl.classList.remove('hidden'); return; }
+      try {
+        await App.api.superCreateEvent({
+          name, slug,
+          description: document.getElementById('ce_desc').value,
+          event_date:  document.getElementById('ce_date').value || null,
+          location:    document.getElementById('ce_location').value,
+          status:      document.getElementById('ce_status').value,
+          primary_color: document.getElementById('ce_primary').value,
+        });
+        document.getElementById('createEventModal').classList.add('hidden');
+        await load();
+      } catch (e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
+    });
+
+    document.querySelectorAll('[data-archive]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Archive this event? It will be set to read-only.')) return;
+        try { await App.api.superArchiveEvent(btn.dataset.archive); await load(); }
+        catch (e) { alert(e.message); }
+      });
+    });
+    document.querySelectorAll('[data-restore]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try { await App.api.superRestoreEvent(btn.dataset.restore); await load(); }
+        catch (e) { alert(e.message); }
+      });
+    });
+
+    // Auto-generate slug from name
+    document.getElementById('ce_name')?.addEventListener('input', e => {
+      const slugEl = document.getElementById('ce_slug');
+      if (!slugEl._touched) {
+        slugEl.value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      }
+    });
+    document.getElementById('ce_slug')?.addEventListener('input', e => { e.target._touched = !!e.target.value; });
+  }
+
+  async function load() {
+    try {
+      allEvents = await App.api.superListEvents();
+      render();
+    } catch (e) {
+      el.innerHTML = `<p class="text-red-500">Failed to load events: ${e.message}</p>`;
+    }
+  }
+
+  load();
+})();
+</script>
+<style>
+.label { display:block; font-size:13px; font-weight:600; color:#6b6560; margin-bottom:4px; }
+.input { width:100%; border-radius:12px; border:1px solid #e5e2df; padding:8px 14px; font-size:14px; }
+</style>
+</body>
+</html>

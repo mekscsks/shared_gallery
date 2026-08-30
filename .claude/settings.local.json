@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /b js/pages/ js/components/ js/api.js index.html gallery.html guestbook.html photostrip.html)",
+      "Bash(rtk ls *)"
+    ]
+  }
+}

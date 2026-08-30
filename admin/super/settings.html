@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>System Settings — Super Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../../js/tailwind-config.js"></script>
+<link rel="stylesheet" href="../../css/styles.css" />
+</head>
+<body class="font-body text-ink-900">
+<div id="shellSlot"></div>
+<script src="../../js/mockData.js"></script>
+<script src="../../js/api.js"></script>
+<script>App.session.requireSuperAdminOrRedirect();</script>
+<script src="../../js/components/sheetsAndToasts.js"></script>
+<script src="../../js/components/superShell.js"></script>
+<script>
+(function () {
+  document.getElementById('shellSlot').innerHTML =
+    App.components.superShell('settings', 'System Settings', 'Platform-level configuration');
+
+  const el = document.getElementById('superPageContent');
+
+  async function load() {
+    try {
+      const settings = await App.api.superListSettings();
+      render(settings);
+    } catch (e) {
+      el.innerHTML = `<p class="text-red-500">Failed to load: ${e.message}</p>`;
+    }
+  }
+
+  function render(settings) {
+    const rows = settings.map(s => `
+      <tr class="border-b border-ink-50">
+        <td class="px-5 py-3 font-mono text-sm text-ink-600">${s.setting_key}</td>
+        <td class="px-5 py-3">
+          <input data-key="${s.setting_key}" type="text" value="${s.setting_value ?? ''}"
+            class="rounded-xl border border-ink-200 px-3 py-1.5 text-sm w-full max-w-xs" />
+        </td>
+        <td class="px-5 py-3">
+          <span class="text-xs px-2 py-0.5 rounded-full ${s.is_public ? 'bg-green-100 text-green-700' : 'bg-ink-100 text-ink-500'}">
+            ${s.is_public ? 'Public' : 'Private'}
+          </span>
+        </td>
+        <td class="px-5 py-3 text-ink-400 text-xs">${s.updated_at ? new Date(s.updated_at).toLocaleDateString() : '—'}</td>
+      </tr>`).join('');
+
+    el.innerHTML = `
+    <div class="bg-white rounded-2xl border border-ink-100 shadow-soft overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-[12px] font-semibold text-ink-400 border-b border-ink-100">
+          <th class="px-5 py-3">Key</th><th class="px-5 py-3">Value</th>
+          <th class="px-5 py-3">Visibility</th><th class="px-5 py-3">Updated</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div id="saveMsg" class="hidden mt-3 text-sm text-green-600"></div>
+    <div id="saveErr" class="hidden mt-3 text-sm text-red-600"></div>
+    <button id="saveSettings" class="mt-4 px-6 py-2.5 rounded-2xl bg-ink-900 text-white text-sm font-semibold">Save Changes</button>`;
+
+    document.getElementById('saveSettings').addEventListener('click', async () => {
+      const patch = {};
+      document.querySelectorAll('[data-key]').forEach(input => {
+        patch[input.dataset.key] = input.value;
+      });
+      const msgEl = document.getElementById('saveMsg');
+      const errEl = document.getElementById('saveErr');
+      msgEl.classList.add('hidden');
+      errEl.classList.add('hidden');
+      try {
+        await App.api.superUpdateSettings(patch);
+        msgEl.textContent = 'Settings saved.';
+        msgEl.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      }
+    });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

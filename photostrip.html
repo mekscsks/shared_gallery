@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Photo Strip Builder — RCY Training 2026</title>
+<meta name="theme-color" content="#FFFBF8" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="bg-cream font-body text-ink-900 min-h-screen pb-10">
+
+  <header class="sticky top-0 z-30 bg-cream/90 backdrop-blur border-b border-ink-100">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-3.5 flex items-center gap-3">
+      <a href="gallery.html" class="w-9 h-9 rounded-full bg-sand grid place-items-center text-ink-600 shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="m15 6-6 6 6 6"/></svg>
+      </a>
+      <div>
+        <p class="font-display font-semibold text-ink-900 leading-tight">Photo Strip Builder</p>
+        <p class="text-[11px] text-ink-400 -mt-0.5">Optional \u2014 totally up to you</p>
+      </div>
+    </div>
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 pb-3.5">
+      <div id="stepIndicator" class="flex items-center gap-2"></div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 pt-6">
+    <div id="stepContent"></div>
+  </main>
+
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 mt-8 flex items-center gap-3 sticky bottom-4">
+    <button id="backStepBtn" type="button" class="hidden py-3.5 px-5 rounded-2xl border border-ink-200 bg-cream font-semibold text-ink-600">Back</button>
+    <button id="nextStepBtn" type="button" disabled
+      class="flex-1 py-3.5 rounded-2xl bg-primary-500 disabled:bg-ink-200 disabled:text-ink-400 text-white font-semibold shadow-lift disabled:shadow-none active:scale-[.98] transition-all">
+      Continue
+    </button>
+  </div>
+
+<script src="js/mockData.js"></script>
+<script src="js/api.js"></script>
+<script src="js/components/sheetsAndToasts.js"></script>
+<script src="js/components/photoStrip.js"></script>
+<script src="js/pages/photostrip.js"></script>
+</body>
+</html>

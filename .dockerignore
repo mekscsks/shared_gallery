@@ -1,0 +1,4 @@
+.git
+.claude
+backend/.env
+backend/storage/uploads/*

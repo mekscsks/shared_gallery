@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Guestbook — RCY Training 2026</title>
+<meta name="theme-color" content="#FFFBF8" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="bg-cream font-body text-ink-900 min-h-screen pb-24 sm:pb-12">
+
+  <div id="headerSlot"></div>
+
+  <main class="max-w-2xl mx-auto px-4 sm:px-6 pt-5">
+    <div class="mb-5">
+      <div id="desktopTabsSlot" class="mb-4"></div>
+      <h1 class="font-display font-semibold text-2xl sm:text-3xl text-ink-900">Guestbook</h1>
+      <p class="text-ink-400 text-sm mt-0.5">Leave a little message for everyone to remember.</p>
+    </div>
+
+    <div id="composerSlot" class="mb-6"></div>
+    <div id="guestbookListSlot"></div>
+  </main>
+
+  <div id="bottomNavSlot"></div>
+  <div id="shareMemoryFabSlot"></div>
+  <div id="uploadModalSlot"></div>
+  <div id="moreSheetSlot"></div>
+  <div id="eventInfoModalSlot"></div>
+
+<script src="js/mockData.js"></script>
+<script src="js/api.js"></script>
+<script src="js/components/header.js"></script>
+<script src="js/components/bottomNav.js"></script>
+<script src="js/components/sheetsAndToasts.js"></script>
+<script src="js/components/uploadModal.js"></script>
+<script src="js/components/galleryGrid.js"></script>
+<script src="js/components/guestbook.js"></script>
+<script src="js/pages/guestbook.js"></script>
+</body>
+</html>

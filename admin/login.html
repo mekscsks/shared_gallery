@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="theme-color" content="#1A1310" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Login — Shared Event Gallery</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../js/tailwind-config.js"></script>
+<link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body class="font-body text-ink-900 min-h-screen bg-sand flex items-center justify-center px-4">
+
+<div class="w-full max-w-sm">
+  <div class="text-center mb-8">
+    <div class="w-14 h-14 rounded-2xl bg-ink-900 text-white grid place-items-center font-display font-bold text-xl mx-auto mb-4">A</div>
+    <h1 class="font-display font-semibold text-2xl text-ink-900">Admin Login</h1>
+    <p class="text-ink-400 text-sm mt-1">Shared Event Gallery</p>
+  </div>
+
+  <form id="loginForm" class="bg-white rounded-3xl shadow-soft p-6 space-y-4" novalidate>
+    <div id="errorBanner" class="hidden bg-primary-50 border border-primary-200 text-primary-700 text-sm rounded-2xl px-4 py-3" role="alert"></div>
+
+    <div>
+      <label for="emailInput" class="text-[13px] font-semibold text-ink-600 mb-1.5 block">Email</label>
+      <input id="emailInput" type="email" autocomplete="email" required
+        class="w-full rounded-xl border border-ink-200 px-4 py-2.5 text-[15px] focus:border-primary-400 focus:ring-0" />
+    </div>
+
+    <div>
+      <label for="passwordInput" class="text-[13px] font-semibold text-ink-600 mb-1.5 block">Password</label>
+      <input id="passwordInput" type="password" autocomplete="current-password" required
+        class="w-full rounded-xl border border-ink-200 px-4 py-2.5 text-[15px] focus:border-primary-400 focus:ring-0" />
+    </div>
+
+    <button type="submit" id="loginBtn"
+      class="w-full py-3.5 rounded-2xl bg-ink-900 text-white font-semibold text-[15px] disabled:opacity-50 transition-opacity">
+      Sign in
+    </button>
+  </form>
+</div>
+
+<script src="../js/mockData.js"></script>
+<script src="../js/api.js"></script>
+<script>
+(function () {
+  // If already logged in and token not expired, go straight to dashboard
+  const token   = localStorage.getItem('rcy_gallery__admin_token');
+  const expires = localStorage.getItem('rcy_gallery__admin_expires');
+  if (token && expires && new Date(expires.replace(' ', 'T') + '+08:00') > new Date()) {
+    window.location.replace('dashboard.html');
+    return;
+  }
+
+  const form        = document.getElementById('loginForm');
+  const emailInput  = document.getElementById('emailInput');
+  const passInput   = document.getElementById('passwordInput');
+  const btn         = document.getElementById('loginBtn');
+  const errorBanner = document.getElementById('errorBanner');
+
+  function showError(msg) {
+    errorBanner.textContent = msg;
+    errorBanner.classList.remove('hidden');
+  }
+  function clearError() {
+    errorBanner.classList.add('hidden');
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearError();
+
+    const email    = emailInput.value.trim();
+    const password = passInput.value;
+
+    if (!email || !password) {
+      showError('Email and password are required.');
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+      const data = await App.api.adminLogin(email, password);
+      if (data.admin.role === 'super_admin') {
+        window.location.replace('super/dashboard.html');
+      } else {
+        window.location.replace('dashboard.html');
+      }
+    } catch (err) {
+      showError(err.message || 'Invalid email or password.');
+      btn.disabled    = false;
+      btn.textContent = 'Sign in';
+      passInput.value = '';
+      passInput.focus();
+    }
+  });
+})();
+</script>
+</body>
+</html>

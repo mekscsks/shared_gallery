@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guests — Super Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../../js/tailwind-config.js"></script>
+<link rel="stylesheet" href="../../css/styles.css" />
+</head>
+<body class="font-body text-ink-900">
+<div id="shellSlot"></div>
+<script src="../../js/mockData.js"></script>
+<script src="../../js/api.js"></script>
+<script>App.session.requireSuperAdminOrRedirect();</script>
+<script src="../../js/components/sheetsAndToasts.js"></script>
+<script src="../../js/components/superShell.js"></script>
+<script>
+(function () {
+  document.getElementById('shellSlot').innerHTML =
+    App.components.superShell('guests', 'Guests', 'View all guests across events');
+
+  const el = document.getElementById('superPageContent');
+  let searchQ = '';
+  let eventId = '';
+  let events  = [];
+
+  async function load() {
+    try {
+      if (!events.length) events = await App.api.superListEvents();
+      const params = {};
+      if (searchQ) params.search = searchQ;
+      if (eventId) params.event_id = eventId;
+      const guests = await App.api.superListGuests(params);
+      render(guests);
+    } catch (e) {
+      el.innerHTML = `<p class="text-red-500">Failed to load: ${e.message}</p>`;
+    }
+  }
+
+  function render(guests) {
+    el.innerHTML = `
+    <div class="flex flex-wrap gap-3 mb-5">
+      <input id="guestSearch" type="search" placeholder="Search by name…" value="${searchQ}"
+        class="flex-1 min-w-[180px] rounded-xl border border-ink-200 px-4 py-2 text-sm" />
+      <select id="eventFilter" class="rounded-xl border border-ink-200 px-3 py-2 text-sm">
+        <option value="">All Events</option>
+        ${events.map(e => `<option value="${e.id}" ${eventId == e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
+      </select>
+    </div>
+    ${guests.length === 0 ? '<p class="text-ink-400 text-sm py-8 text-center">No guests found.</p>' : `
+    <div class="bg-white rounded-2xl border border-ink-100 shadow-soft overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-[12px] font-semibold text-ink-400 border-b border-ink-100">
+          <th class="px-5 py-3">Name</th><th class="px-5 py-3">Event</th>
+          <th class="px-5 py-3">Registered</th><th class="px-5 py-3">Last Seen</th>
+        </tr></thead>
+        <tbody>
+          ${guests.map(g => `
+          <tr class="border-b border-ink-50 hover:bg-sand/50">
+            <td class="px-5 py-3 font-semibold">${g.name}</td>
+            <td class="px-5 py-3"><a href="event-detail.html?id=${g.event_id}" class="text-primary-600 hover:underline">${g.event_name}</a></td>
+            <td class="px-5 py-3 text-ink-400">${new Date(g.created_at).toLocaleString()}</td>
+            <td class="px-5 py-3 text-ink-400">${g.last_seen_at ? new Date(g.last_seen_at).toLocaleString() : '—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`}`;
+
+    document.getElementById('guestSearch').addEventListener('input', e => { searchQ = e.target.value; load(); });
+    document.getElementById('eventFilter').addEventListener('change', e => { eventId = e.target.value; load(); });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
