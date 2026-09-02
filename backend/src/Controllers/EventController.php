@@ -16,7 +16,12 @@ class EventController
     public static function getBySlug(Request $request): void
     {
         $slug  = $request->params['slug'] ?? '';
-        $event = self::findActiveBySlug($slug);
+
+        // Admins can view events in any status; guests only see active/archived
+        $admin = AdminAuth::attempt($request);
+        $event = $admin
+            ? self::findBySlugAny($slug)
+            : self::findActiveBySlug($slug);
 
         if (!$event) {
             Response::error('Event not found', 404);
@@ -173,6 +178,15 @@ class EventController
     {
         $stmt = Database::get()->prepare(
             "SELECT * FROM events WHERE slug = ? AND status IN ('active','archived') AND deleted_at IS NULL LIMIT 1"
+        );
+        $stmt->execute([$slug]);
+        return $stmt->fetch();
+    }
+
+    private static function findBySlugAny(string $slug): array|false
+    {
+        $stmt = Database::get()->prepare(
+            'SELECT * FROM events WHERE slug = ? AND deleted_at IS NULL LIMIT 1'
         );
         $stmt->execute([$slug]);
         return $stmt->fetch();

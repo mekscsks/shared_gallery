@@ -26,6 +26,17 @@ $dotenv->required(['DB_HOST', 'DB_DATABASE', 'DB_USERNAME']);
 // --- Timezone ---
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'Asia/Manila');
 
+// --- Session ---
+$sessionLifetime = (int) ($_ENV['SESSION_LIFETIME'] ?? 28800);
+session_set_cookie_params([
+    'lifetime' => $sessionLifetime,
+    'path'     => '/',
+    'secure'   => ($_ENV['APP_ENV'] ?? 'local') === 'production',
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+session_start();
+
 // --- CORS ---
 $allowedOrigins = array_map('trim', explode(',', $_ENV['CORS_ALLOWED_ORIGINS'] ?? ''));
 $origin         = $_SERVER['HTTP_ORIGIN'] ?? '';

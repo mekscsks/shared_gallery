@@ -41,16 +41,14 @@
 </div>
 
 <script src="../js/mockData.js"></script>
+<script src="../js/dev-config.js"></script>
 <script src="../js/api.js"></script>
 <script>
 (function () {
-  // If already logged in and token not expired, go straight to dashboard
-  const token   = localStorage.getItem('rcy_gallery__admin_token');
-  const expires = localStorage.getItem('rcy_gallery__admin_expires');
-  if (token && expires && new Date(expires.replace(' ', 'T') + '+08:00') > new Date()) {
-    window.location.replace('dashboard.html');
-    return;
-  }
+  // If already have a valid session, skip login
+  App.api._apiFetch('/api/admin/me').then(admin => {
+    window.location.replace(admin.role === 'super_admin' ? 'super/dashboard.html' : 'dashboard.html');
+  }).catch(() => { /* not logged in, show form */ });
 
   const form        = document.getElementById('loginForm');
   const emailInput  = document.getElementById('emailInput');

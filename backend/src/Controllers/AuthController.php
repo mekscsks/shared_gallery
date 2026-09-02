@@ -42,22 +42,10 @@ class AuthController
             Response::error('This account has been disabled', 403, 'FORBIDDEN');
         }
 
-        // Generate a cryptographically random token; store only its hash
-        $token     = bin2hex(random_bytes(32)); // 64-char hex
-        $tokenHash = hash('sha256', $token);
-        $lifetime  = (int) ($_ENV['SESSION_LIFETIME'] ?? 28800);
-        $expiresAt = date('Y-m-d H:i:s', time() + $lifetime);
-
-        $db->prepare(
-            'INSERT INTO admin_sessions (admin_id, token_hash, ip_address, user_agent, expires_at)
-             VALUES (?, ?, ?, ?, ?)'
-        )->execute([
-            $admin['id'],
-            $tokenHash,
-            $request->ip(),
-            $request->userAgent(),
-            $expiresAt,
-        ]);
+        session_regenerate_id(true);
+        $_SESSION['admin_id']   = $admin['id'];
+        $_SESSION['admin_role'] = $admin['role'];
+        $_SESSION['admin_name'] = $admin['name'];
 
         $db->prepare('UPDATE admin_users SET last_login_at = NOW() WHERE id = ?')
            ->execute([$admin['id']]);
@@ -65,9 +53,7 @@ class AuthController
         self::log($db, $admin['id'], null, null, 'admin_login', 'admin_user', $admin['id'], 'Admin logged in', $request->ip());
 
         Response::json([
-            'token'      => $token,
-            'expires_at' => $expiresAt,
-            'admin'      => [
+            'admin' => [
                 'id'    => $admin['id'],
                 'name'  => $admin['name'],
                 'email' => $admin['email'],
@@ -82,26 +68,12 @@ class AuthController
      */
     public static function logout(Request $request): void
     {
-        $token = $request->bearerToken();
+        $adminId = $_SESSION['admin_id'] ?? null;
+        session_unset();
+        session_destroy();
 
-        if (!$token) {
-            Response::error('Authentication required', 401, 'UNAUTHORIZED');
-        }
-
-        $hash = hash('sha256', $token);
-        $db   = Database::get();
-
-        $stmt = $db->prepare(
-            'SELECT s.id, s.admin_id FROM admin_sessions s WHERE s.token_hash = ? AND s.revoked_at IS NULL LIMIT 1'
-        );
-        $stmt->execute([$hash]);
-        $session = $stmt->fetch();
-
-        if ($session) {
-            $db->prepare('UPDATE admin_sessions SET revoked_at = NOW() WHERE id = ?')
-               ->execute([$session['id']]);
-
-            self::log($db, $session['admin_id'], null, null, 'admin_logout', 'admin_session', $session['id'], 'Admin logged out', $request->ip());
+        if ($adminId) {
+            self::log(Database::get(), $adminId, null, null, 'admin_logout', 'admin_user', $adminId, 'Admin logged out', $request->ip());
         }
 
         Response::json(['message' => 'Logged out successfully']);

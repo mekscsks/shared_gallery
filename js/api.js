@@ -21,8 +21,11 @@ App.api = (function () {
   const LATENCY = 450;
   const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
-  // Base URL for the PHP backend. Change this to your production URL when deploying.
-  const API_BASE = 'http://localhost:8000';
+  // Empty string = same origin. Works for both local dev (when the PHP server
+  // is proxied or served from the same host) and production deployments.
+  // Override by setting window.API_BASE before loading this file if your
+  // backend lives on a different origin (e.g. during local split-server dev).
+  const API_BASE = window.API_BASE || '';
 
   /**
    * Thin fetch wrapper — always sends/receives JSON, attaches the admin or
@@ -30,10 +33,9 @@ App.api = (function () {
    * server's error message on non-2xx responses.
    */
   function _resolveToken(path) {
+    // Guest-only paths still use the guest session token
     const isAdminPath = /^\/api\/(admin|super)\//.test(path);
-    if (isAdminPath) {
-      return localStorage.getItem('rcy_gallery__admin_token') || '';
-    }
+    if (isAdminPath) return '';
     return (typeof App.session !== 'undefined')
       ? (App.session.getSessionToken() || '')
       : '';
@@ -44,14 +46,11 @@ App.api = (function () {
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(API_BASE + path, { ...options, headers });
+    const res = await fetch(API_BASE + path, { ...options, headers, credentials: 'include' });
     const json = await res.json();
 
     if (!res.ok) {
       if (res.status === 401 && window.location.pathname.includes('/admin/')) {
-        localStorage.removeItem('rcy_gallery__admin_token');
-        localStorage.removeItem('rcy_gallery__admin_expires');
-        localStorage.removeItem('rcy_gallery__admin_role');
         const depth = window.location.pathname.split('/').filter(Boolean).length;
         window.location.replace(depth >= 3 ? '../login.html' : 'login.html');
         return;
@@ -117,11 +116,10 @@ App.api = (function () {
     if (caption) formData.append('caption', caption);
     if (guestId) formData.append('guest_id', guestId);
 
-    const token = _resolveToken(endpoint);
-    const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const token = App.session?.getSessionToken?.() || '';
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-    const res = await fetch(API_BASE + endpoint, { method: 'POST', headers, body: formData });
+    const res = await fetch(API_BASE + endpoint, { method: 'POST', headers, body: formData, credentials: 'include' });
     const json = await res.json();
 
     if (!res.ok) {
@@ -130,7 +128,6 @@ App.api = (function () {
       err.code = json?.error?.code || 'UPLOAD_FAILED';
       throw err;
     }
-    // Server returns an array (one entry per file); we sent one file so return the first
     return Array.isArray(json.data) ? json.data[0] : json.data;
   }
 
@@ -162,9 +159,7 @@ App.api = (function () {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', type);
-    const token = localStorage.getItem('rcy_gallery__admin_token') || '';
-    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    const res = await fetch(API_BASE + `/api/admin/events/${eventId}/assets`, { method: 'POST', headers, body: formData });
+    const res = await fetch(API_BASE + `/api/admin/events/${eventId}/assets`, { method: 'POST', body: formData, credentials: 'include' });
     const json = await res.json();
     if (!res.ok) throw new Error(json?.error?.message || 'Upload failed');
     return json.data;
@@ -199,16 +194,12 @@ App.api = (function () {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    localStorage.setItem('rcy_gallery__admin_token', data.token);
-    localStorage.setItem('rcy_gallery__admin_expires', data.expires_at);
     localStorage.setItem('rcy_gallery__admin_role', data.admin.role);
     return data;
   }
 
   async function adminLogout() {
     await apiFetch('/api/admin/logout', { method: 'POST' }).catch(() => {});
-    localStorage.removeItem('rcy_gallery__admin_token');
-    localStorage.removeItem('rcy_gallery__admin_expires');
     localStorage.removeItem('rcy_gallery__admin_role');
   }
 
@@ -356,51 +347,36 @@ App.session = (function () {
   function getGuestName()    { return localStorage.getItem(storageKey('guestName'))    || ''; }
   function getGuestId()      { return localStorage.getItem(storageKey('guestId'))      || ''; }
   function getSessionToken() { return localStorage.getItem(storageKey('sessionToken')) || ''; }
-  function getAdminToken()   { return localStorage.getItem('rcy_gallery__admin_token') || ''; }
-
-  // Server returns 'YYYY-MM-DD HH:mm:ss' in Asia/Manila (UTC+8).
-  // Appending +08:00 ensures the browser parses it as Manila time
-  // regardless of the browser's own local timezone.
-  function parseServerExpiry(str) {
-    return new Date(str.replace(' ', 'T') + '+08:00');
-  }
+  function getAdminRole()   { return localStorage.getItem('rcy_gallery__admin_role') || ''; }
 
   function loginUrl() {
-    // Works from both /admin/ and /admin/super/
     const depth = window.location.pathname.split('/').filter(Boolean).length;
     return depth >= 3 ? '../login.html' : 'login.html';
   }
 
-  function requireAdminOrRedirect() {
-    const token   = localStorage.getItem('rcy_gallery__admin_token');
-    const expires = localStorage.getItem('rcy_gallery__admin_expires');
-    if (!token || !expires) {
-      window.location.replace(loginUrl());
-      return;
-    }
-    const expiresDate = parseServerExpiry(expires);
-    if (isNaN(expiresDate) || expiresDate <= new Date()) {
-      localStorage.removeItem('rcy_gallery__admin_token');
-      localStorage.removeItem('rcy_gallery__admin_expires');
-      localStorage.removeItem('rcy_gallery__admin_role');
+  // Exposed promise so page scripts can `await App.session.authReady` before rendering.
+  let _authResolve;
+  const authReady = new Promise(res => { _authResolve = res; });
+
+  async function requireAdminOrRedirect() {
+    document.body.hidden = true;
+    try {
+      await App.api._apiFetch('/api/admin/me');
+      document.body.hidden = false;
+      _authResolve();
+    } catch (e) {
       window.location.replace(loginUrl());
     }
   }
 
-  function requireSuperAdminOrRedirect() {
-    const token   = localStorage.getItem('rcy_gallery__admin_token');
-    const expires = localStorage.getItem('rcy_gallery__admin_expires');
-    if (!token || !expires) { window.location.replace(loginUrl()); return; }
-    const expiresDate = parseServerExpiry(expires);
-    if (isNaN(expiresDate) || expiresDate <= new Date()) {
-      localStorage.removeItem('rcy_gallery__admin_token');
-      localStorage.removeItem('rcy_gallery__admin_expires');
-      localStorage.removeItem('rcy_gallery__admin_role');
-      window.location.replace(loginUrl());
-      return;
-    }
-    const role = localStorage.getItem('rcy_gallery__admin_role');
-    if (role !== 'super_admin') {
+  async function requireSuperAdminOrRedirect() {
+    document.body.hidden = true;
+    try {
+      const admin = await App.api._apiFetch('/api/admin/me');
+      if (admin.role !== 'super_admin') { window.location.replace(loginUrl()); return; }
+      document.body.hidden = false;
+      _authResolve();
+    } catch (e) {
       window.location.replace(loginUrl());
     }
   }
@@ -441,5 +417,5 @@ App.session = (function () {
   function requireGuestOrRedirect() {
     if (!getGuestName()) window.location.href = `index.html?event=${getEventSlug()}`;
   }
-  return { getEventSlug, getGuestName, getGuestId, getSessionToken, getAdminToken, requireAdminOrRedirect, requireSuperAdminOrRedirect, setGuestName, clearGuestName, requireGuestOrRedirect };
+  return { getEventSlug, getGuestName, getGuestId, getSessionToken, getAdminRole, authReady, requireAdminOrRedirect, requireSuperAdminOrRedirect, setGuestName, clearGuestName, requireGuestOrRedirect };
 })();

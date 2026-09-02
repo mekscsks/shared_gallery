@@ -68,7 +68,8 @@ App.components.adminShell = function renderAdminShell(event, activeId, title, su
   setTimeout(() => {
     async function doLogout() {
       await App.api.adminLogout();
-      window.location.replace('login.html');
+      const depth = window.location.pathname.split('/').filter(Boolean).length;
+      window.location.replace(depth >= 3 ? '../login.html' : 'login.html');
     }
     document.getElementById('adminLogoutBtn')?.addEventListener('click', doLogout);
     document.getElementById('adminLogoutBtnMobile')?.addEventListener('click', doLogout);
