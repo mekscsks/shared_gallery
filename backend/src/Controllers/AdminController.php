@@ -279,18 +279,7 @@ class AdminController
 
     private static function log(\PDO $db, Request $request, int $eventId, string $action, string $entityType, int $entityId): void
     {
-        // Best-effort — resolve admin id from token
-        $adminId = null;
-        try {
-            $token = $request->bearerToken();
-            if ($token) {
-                $hash = hash('sha256', $token);
-                $s    = $db->prepare('SELECT admin_id FROM admin_sessions WHERE token_hash = ? LIMIT 1');
-                $s->execute([$hash]);
-                $row     = $s->fetch();
-                $adminId = $row ? (int) $row['admin_id'] : null;
-            }
-        } catch (\Throwable) {}
+        $adminId = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : null;
 
         $db->prepare(
             'INSERT INTO activity_logs (event_id, admin_id, action, entity_type, entity_id, ip_address)

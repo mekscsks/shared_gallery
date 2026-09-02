@@ -45,10 +45,16 @@
 <script src="../js/api.js"></script>
 <script>
 (function () {
-  // If already have a valid session, skip login
-  App.api._apiFetch('/api/admin/me').then(admin => {
-    window.location.replace(admin.role === 'super_admin' ? 'super/dashboard.html' : 'dashboard.html');
-  }).catch(() => { /* not logged in, show form */ });
+  // If already have a valid session, skip login.
+  // Use raw fetch to avoid the apiFetch 401→redirect handler triggering on this page.
+  fetch('/api/admin/me', { credentials: 'include' })
+    .then(r => r.ok ? r.json() : null)
+    .then(json => {
+      if (json?.data?.role) {
+        window.location.replace(json.data.role === 'super_admin' ? 'super/dashboard.html' : 'dashboard.html');
+      }
+    })
+    .catch(() => {});
 
   const form        = document.getElementById('loginForm');
   const emailInput  = document.getElementById('emailInput');

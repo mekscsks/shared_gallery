@@ -66,7 +66,8 @@ $request = new Request();
 // Auth
 $router->post('/api/admin/login',  [AuthController::class, 'login']);
 $router->post('/api/admin/logout', [AuthController::class, 'logout']);
-$router->get('/api/admin/me',      [AuthController::class, 'me']);
+$router->get('/api/admin/me',         [AuthController::class, 'me']);
+$router->get('/api/admin/my-events',  [AuthController::class, 'myEvents']);
 
 $router->get('/debug', function($req) {
     App\Core\Response::json([
@@ -77,6 +78,7 @@ $router->get('/debug', function($req) {
 });
 
 // Phase 3 — Events + Guest sessions
+$router->get('/api/events/default',      [EventController::class, 'getDefault']);
 $router->get('/api/events/slug/{slug}',  [EventController::class, 'getBySlug']);
 $router->get('/api/events/{id}',          [EventController::class, 'getById']);
 $router->patch('/api/events/{id}',        [EventController::class, 'update']);
@@ -142,8 +144,7 @@ $router->delete('/api/admin/guestbook/{id}',          [AdminController::class, '
 $router->patch('/api/admin/events/{id}/settings',     [AdminController::class, 'updateSettings']);
 $router->get('/api/admin/events/{id}/stats',          [AdminController::class, 'stats']);
 
-// Serve uploaded files from storage/ — only reachable via this explicit
-// path prefix so arbitrary files can't be served from the backend root.
+// Serve uploaded files from storage/
 $path = $request->path();
 if (str_starts_with($path, '/storage/uploads/')) {
     $file = dirname(__DIR__) . $path;

@@ -84,6 +84,10 @@ App.api = (function () {
     return apiFetch(`/api/events/slug/${encodeURIComponent(slug)}`);
   }
 
+  async function getDefaultEvent() {
+    return apiFetch('/api/events/default');
+  }
+
   async function getPhotos(eventId) {
     return apiFetch(`/api/events/${eventId}/photos`);
   }
@@ -189,6 +193,10 @@ App.api = (function () {
   }
 
   // --- Admin auth ---
+  async function myEvents() {
+    return apiFetch('/api/admin/my-events');
+  }
+
   async function adminLogin(email, password) {
     const data = await apiFetch('/api/admin/login', {
       method: 'POST',
@@ -313,7 +321,7 @@ App.api = (function () {
     uploadMedia, uploadAsset, buildUploadFormData, submitGuestbookMessage, getPhotoStripTemplates, createPhotoStrip,
     hidePhoto, featurePhoto, deletePhoto, hideMessage, deleteMessage,
     updateEventSettings, reportPhoto, openCamera, capturePhoto, captureSequence,
-    adminLogin, adminLogout,
+    adminLogin, adminLogout, myEvents,
     superDashboard, superListEvents, superCreateEvent, superGetEvent, superUpdateEvent,
     superArchiveEvent, superRestoreEvent,
     superListAdmins, superCreateAdmin, superGetAdmin, superUpdateAdmin,
@@ -340,7 +348,7 @@ App.session = (function () {
     const match = window.location.pathname.match(/event\/([^/]+)/);
     if (match) return match[1];
     const params = new URLSearchParams(window.location.search);
-    return params.get('event') || window.MOCK_DB.event.slug;
+    return params.get('event') || '';
   }
   function storageKey(field) { return `rcy_gallery__${getEventSlug()}__${field}`; }
 

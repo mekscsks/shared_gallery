@@ -9,8 +9,9 @@ const ADMIN_NAV = [
 ];
 
 App.components.adminShell = function renderAdminShell(event, activeId, title, subtitle) {
+  const eid = event.id;
   const navLink = (item) => `
-    <a href="${item.href}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors
+    <a href="${item.href}?event_id=${eid}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors
         ${activeId === item.id ? 'bg-white text-ink-900' : 'text-white/60 hover:text-white hover:bg-white/5'}">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${item.icon}</svg>
       ${item.label}
@@ -56,7 +57,7 @@ App.components.adminShell = function renderAdminShell(event, activeId, title, su
 
       <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-ink-900 text-white flex pb-[env(safe-area-inset-bottom)]">
         ${ADMIN_NAV.map((item) => `
-          <a href="${item.href}" class="flex-1 flex flex-col items-center gap-1 py-2.5 ${activeId === item.id ? 'text-white' : 'text-white/40'}">
+          <a href="${item.href}?event_id=${eid}" class="flex-1 flex flex-col items-center gap-1 py-2.5 ${activeId === item.id ? 'text-white' : 'text-white/40'}">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${item.icon}</svg>
             <span class="text-[10px] font-semibold">${item.label}</span>
           </a>`).join('')}

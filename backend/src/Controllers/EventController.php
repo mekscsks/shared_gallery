@@ -10,6 +10,28 @@ use App\Middleware\AdminAuth;
 class EventController
 {
     /**
+     * GET /api/events/default
+     * Public — returns the default event if one is set in system_settings.
+     */
+    public static function getDefault(Request $request): void
+    {
+        $stmt = Database::get()->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'default_event_slug' LIMIT 1");
+        $stmt->execute();
+        $setting = $stmt->fetchColumn();
+
+        if (!$setting) {
+            Response::error('No default event configured', 404, 'NO_DEFAULT_EVENT');
+        }
+
+        $event = self::findActiveBySlug($setting);
+        if (!$event) {
+            Response::error('Default event not found or not active', 404, 'NOT_FOUND');
+        }
+
+        Response::json(self::format($event));
+    }
+
+    /**
      * GET /api/events/slug/{slug}
      * Public — used by the guest welcome screen to load event data.
      */
@@ -36,15 +58,13 @@ class EventController
      */
     public static function getById(Request $request): void
     {
-        $admin = AdminAuth::require($request);
-        $id    = (int) ($request->params['id'] ?? 0);
+        AdminAuth::require($request);
+        $id = (int) ($request->params['id'] ?? 0);
 
         AdminAuth::requireEventAccess($request, $id);
 
         $event = self::findById($id);
-        if (!$event) {
-            Response::error('Event not found', 404);
-        }
+        if (!$event) Response::error('Event not found', 404);
 
         Response::json(self::format($event));
     }

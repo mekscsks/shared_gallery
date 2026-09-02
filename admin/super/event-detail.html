@@ -22,7 +22,7 @@
     App.components.superShell('events', 'Event Detail', '');
 
   const el  = document.getElementById('superPageContent');
-  const id  = new URLSearchParams(location.search).get('id');
+  const id  = new URLSearchParams(window.location.search).get('id');
   if (!id) { el.innerHTML = '<p class="text-red-500">No event ID provided.</p>'; return; }
 
   let event = null;
@@ -58,7 +58,11 @@
       <div class="bg-white rounded-2xl border border-ink-100 shadow-soft p-6 space-y-3">
         <div class="flex items-center justify-between">
           <h2 class="font-display font-semibold text-lg">${event.name}</h2>
-          ${statusBadge(event.status)}
+          <div class="flex items-center gap-2">
+            ${statusBadge(event.status)}
+            ${event.status !== 'active' ? `<button id="activateBtn" class="text-xs font-semibold px-3 py-1 rounded-full bg-green-600 text-white hover:bg-green-700">Set Active</button>` : ''}
+            ${event.status === 'active' ? `<button id="archiveBtn" class="text-xs font-semibold px-3 py-1 rounded-full bg-ink-200 text-ink-600 hover:bg-ink-300">Archive</button>` : ''}
+          </div>
         </div>
         <p class="text-ink-500 text-sm">${event.description || '—'}</p>
         <div class="grid grid-cols-2 gap-2 text-sm">
@@ -105,6 +109,17 @@
         try { await App.api.superRemoveAdmin(id, btn.dataset.remove); await load(); }
         catch (e) { alert(e.message); }
       });
+    });
+
+    document.getElementById('activateBtn')?.addEventListener('click', async () => {
+      try { await App.api.superUpdateEvent(id, { status: 'active' }); await load(); App.ui.toast('Event set to active.'); }
+      catch (e) { App.ui.toast(e.message, 'error'); }
+    });
+
+    document.getElementById('archiveBtn')?.addEventListener('click', async () => {
+      if (!confirm('Archive this event? Guests will no longer be able to access it.')) return;
+      try { await App.api.superUpdateEvent(id, { status: 'archived' }); await load(); App.ui.toast('Event archived.'); }
+      catch (e) { App.ui.toast(e.message, 'error'); }
     });
 
     document.getElementById('assignBtn')?.addEventListener('click', async () => {

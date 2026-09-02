@@ -1,6 +1,8 @@
 (async function () {
-  const slug = App.session.getEventSlug();
-  const event = await App.api.getEvent(slug);
+  const eventId = new URLSearchParams(window.location.search).get('event_id');
+  if (!eventId) { window.location.replace('dashboard.html'); return; }
+
+  const event = await App.api._apiFetch(`/api/events/${eventId}`);
   document.title = `Event Settings — ${event.name} Admin`;
 
   document.getElementById('shellSlot').innerHTML = App.components.adminShell(
@@ -211,7 +213,9 @@
         },
         isPrivate: !document.getElementById('toggleGalleryVisible').checked,
       });
-      App.ui.toast('Event settings saved');
+      App.ui.toast('Settings saved ✓', { icon: '✅' });
+    } catch (err) {
+      App.ui.toast(err.message || 'Failed to save settings', { icon: '❌' });
     } finally {
       btn.disabled = false;
       btn.textContent = 'Save Changes';

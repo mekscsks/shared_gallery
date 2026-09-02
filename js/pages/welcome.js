@@ -1,6 +1,32 @@
 (async function () {
-  const slug = App.session.getEventSlug();
-  const event = await App.api.getEvent(slug);
+  let slug = App.session.getEventSlug();
+  let event;
+
+  try {
+    if (!slug) {
+      // No ?event= param — try the system default
+      event = await App.api._apiFetch('/api/events/default');
+      slug = event.slug;
+      // Redirect so the URL reflects the actual event
+      window.history.replaceState(null, '', `?event=${slug}`);
+    } else {
+      event = await App.api.getEvent(slug);
+    }
+  } catch (e) {
+    document.querySelector('main').innerHTML = `
+      <div class="flex flex-col items-center justify-center flex-1 py-20 text-center px-6">
+        <p class="text-4xl mb-4">🔒</p>
+        <h2 class="font-display font-semibold text-xl mb-2">Event not available</h2>
+        <p class="text-ink-400 text-sm">${
+          e.code === 'NO_DEFAULT_EVENT'
+            ? 'No event link was provided.'
+            : e.status === 404
+              ? 'This event doesn\'t exist or isn\'t open yet.'
+              : 'Something went wrong. Please try again.'
+        }</p>
+      </div>`;
+    return;
+  }
   document.title = `${event.name} — Event Gallery`;
 
   // Store the event id globally so App.session.setGuestName() can pass it

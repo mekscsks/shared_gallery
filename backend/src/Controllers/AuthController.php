@@ -95,6 +95,33 @@ class AuthController
         ]);
     }
 
+    /**
+     * GET /api/admin/my-events
+     * Returns events assigned to the current admin (or all events for super_admin).
+     */
+    public static function myEvents(Request $request): void
+    {
+        $admin = AdminAuth::require($request);
+        $db    = Database::get();
+
+        if ($admin['role'] === 'super_admin') {
+            $stmt = $db->query(
+                "SELECT id, name, slug, status, primary_color FROM events WHERE deleted_at IS NULL ORDER BY created_at DESC"
+            );
+        } else {
+            $stmt = $db->prepare(
+                'SELECT e.id, e.name, e.slug, e.status, e.primary_color
+                 FROM events e
+                 JOIN event_admins ea ON ea.event_id = e.id
+                 WHERE ea.admin_id = ? AND e.deleted_at IS NULL
+                 ORDER BY e.status = \'active\' DESC, e.created_at DESC'
+            );
+            $stmt->execute([$admin['id']]);
+        }
+
+        Response::json($stmt->fetchAll());
+    }
+
     private static function log(
         \PDO $db,
         ?int $adminId,

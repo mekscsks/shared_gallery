@@ -1,6 +1,8 @@
 (async function () {
-  const slug = App.session.getEventSlug();
-  const event = await App.api.getEvent(slug);
+  const eventId = new URLSearchParams(window.location.search).get('event_id');
+  if (!eventId) { window.location.replace('dashboard.html'); return; }
+
+  const event = await App.api._apiFetch(`/api/events/${eventId}`);
   document.title = `Gallery Management — ${event.name} Admin`;
 
   document.getElementById('shellSlot').innerHTML = App.components.adminShell(
@@ -63,14 +65,14 @@
               <p class="text-[12px] font-semibold text-ink-800 truncate">${item.uploaderName}</p>
               <p class="text-[11px] text-ink-400 mb-2.5">${new Date(item.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
               <div class="flex items-center gap-1.5">
-                <button data-action="feature" data-id="${item.id}" title="Feature" class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold border ${item.featured ? 'bg-gold-500 text-white border-gold-500' : 'border-ink-200 text-ink-600'}">\u2b50</button>
-                <button data-action="hide" data-id="${item.id}" title="Hide" class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold border ${item.hidden ? 'bg-ink-900 text-white border-ink-900' : 'border-ink-200 text-ink-600'}">\ud83d\ude48</button>
-                <button data-action="delete" data-id="${item.id}" title="Delete" class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold border border-primary-200 text-primary-600">\ud83d\uddd1\ufe0f</button>
+                <button data-action="feature" data-id="${item.id}" class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold border ${item.featured ? 'bg-gold-500 text-white border-gold-500' : 'border-ink-200 text-ink-600'}">\u2b50</button>
+                <button data-action="hide" data-id="${item.id}" class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold border ${item.hidden ? 'bg-ink-900 text-white border-ink-900' : 'border-ink-200 text-ink-600'}">\ud83d\ude48</button>
+                <button data-action="delete" data-id="${item.id}" class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold border border-primary-200 text-primary-600">\ud83d\uddd1\ufe0f</button>
               </div>
             </div>
           </div>`).join('')}
       </div>
-      ${!list.length ? `<p class="text-ink-400 text-sm py-10 text-center">No items from this guest.</p>` : ''}`;
+      ${!list.length ? `<p class="text-ink-400 text-sm py-10 text-center">No items found.</p>` : ''}`;
 
     document.getElementById('searchInput').addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); render(); });
     document.getElementById('typeFilterSelect').addEventListener('change', (e) => { typeFilter = e.target.value; render(); });
@@ -84,7 +86,7 @@
     if (action === 'feature') { await App.api.featurePhoto(event.id, id, !item.featured); App.ui.toast(item.featured ? 'Removed from featured' : 'Marked as featured'); }
     if (action === 'hide') { await App.api.hidePhoto(event.id, id, !item.hidden); App.ui.toast(item.hidden ? 'Made visible again' : 'Hidden from guests'); }
     if (action === 'delete') {
-      const ok = await App.ui.confirm('Delete this photo?', 'This action cannot be undone. Guests will no longer see it.');
+      const ok = await App.ui.confirm('Delete this photo?', 'This action cannot be undone.');
       if (!ok) return;
       await App.api.deletePhoto(event.id, id);
       App.ui.toast('Item removed');
