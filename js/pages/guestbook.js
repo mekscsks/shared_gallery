@@ -8,9 +8,9 @@
   const settings = event.settings || {};
 
   document.getElementById('headerSlot').innerHTML = App.components.header(event, 'guestbook');
-  document.getElementById('bottomNavSlot').innerHTML = App.components.bottomNav('guestbook', settings);
+  document.getElementById('bottomNavSlot').innerHTML = App.components.bottomNav('guestbook', settings, slug);
   document.getElementById('shareMemoryFabSlot').innerHTML = App.components.shareMemoryButton();
-  document.getElementById('desktopTabsSlot').innerHTML = App.components.desktopTabs('guestbook', settings);
+  document.getElementById('desktopTabsSlot').innerHTML = App.components.desktopTabs('guestbook', settings, slug);
   document.getElementById('uploadModalSlot').innerHTML = App.components.uploadModal(guestName, settings);
   document.getElementById('moreSheetSlot').innerHTML = App.components.moreSheet(event);
   document.getElementById('eventInfoModalSlot').innerHTML = App.components.eventInfoModal(event);

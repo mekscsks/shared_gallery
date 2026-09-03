@@ -5,7 +5,8 @@ App.components = App.components || {};
  * "More" opens a bottom sheet (Photo Strip, Event Info, Share, Report)
  * so guests are never shown more than three choices at once.
  */
-App.components.bottomNav = function renderBottomNav(active, settings = {}) {
+App.components.bottomNav = function renderBottomNav(active, settings = {}, slug = '') {
+  const q = slug ? `?event=${slug}` : '';
   const item = (id, label, iconSvg, href) => `
     <a href="${href}" data-nav="${id}" aria-label="${label}" aria-current="${active === id ? 'page' : 'false'}"
        class="flex flex-col items-center justify-center gap-1 flex-1 py-2.5 rounded-2xl transition-colors
@@ -14,9 +15,9 @@ App.components.bottomNav = function renderBottomNav(active, settings = {}) {
       <span class="text-[11px] font-semibold">${label}</span>
     </a>`;
 
-  const items = [item('gallery', 'Memories', `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m3 15 5-5 4 4 5-6 4 5"/></svg>`, 'gallery.html')];
+  const items = [item('gallery', 'Memories', `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m3 15 5-5 4 4 5-6 4 5"/></svg>`, `gallery.html${q}`)];
   if (settings.guestbookEnabled !== false) {
-    items.push(item('guestbook', 'Guestbook', `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v13H7l-3 3V4Z"/></svg>`, 'guestbook.html'));
+    items.push(item('guestbook', 'Guestbook', `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v13H7l-3 3V4Z"/></svg>`, `guestbook.html${q}`));
   }
   items.push(item('more', 'More', `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>`, '#'));
 
@@ -38,12 +39,13 @@ App.components.shareMemoryButton = function renderShareMemoryButton() {
 };
 
 /** Desktop top-tab variant (Memories / Videos filter / Guestbook / More) for wider screens. */
-App.components.desktopTabs = function renderDesktopTabs(active, settings = {}) {
+App.components.desktopTabs = function renderDesktopTabs(active, settings = {}, slug = '') {
+  const q = slug ? `?event=${slug}` : '';
   const tab = (id, label, href) => `
     <a href="${href}" aria-current="${active === id ? 'page' : 'false'}" class="px-4 py-2 rounded-full text-sm font-semibold transition-colors
       ${active === id ? 'bg-ink-900 text-white' : 'text-ink-500 hover:text-ink-800 hover:bg-sand'}">${label}</a>`;
-  const tabs = [tab('gallery', 'Memories', 'gallery.html')];
-  if (settings.guestbookEnabled !== false) tabs.push(tab('guestbook', 'Guestbook', 'guestbook.html'));
-  if (settings.photoStripEnabled !== false) tabs.push(tab('photostrip', 'Photo Strip', 'photostrip.html'));
+  const tabs = [tab('gallery', 'Memories', `gallery.html${q}`)];
+  if (settings.guestbookEnabled !== false) tabs.push(tab('guestbook', 'Guestbook', `guestbook.html${q}`));
+  if (settings.photoStripEnabled !== false) tabs.push(tab('photostrip', 'Photo Strip', `photostrip.html${q}`));
   return `<div class="hidden sm:flex items-center gap-1.5 bg-white border border-ink-100 rounded-full p-1.5 shadow-soft w-fit">${tabs.join('')}</div>`;
 };

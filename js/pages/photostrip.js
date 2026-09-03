@@ -3,7 +3,8 @@
   const guestName = App.session.getGuestName();
   const slug = App.session.getEventSlug();
   const event = await App.api.getEvent(slug);
-  document.title = `Photo Strip \u2014 ${event.name}`;
+  document.title = `Photo Strip — ${event.name}`;
+  document.querySelector('a[href="gallery.html"]')?.setAttribute('href', `gallery.html?event=${slug}`);
 
   // Respect the event's photo strip toggle — this is a bonus feature and
   // should never be reachable when an organizer has turned it off.
@@ -18,7 +19,7 @@
     document.getElementById('backStepBtn').remove();
     document.getElementById('nextStepBtn').textContent = 'Back to Gallery';
     document.getElementById('nextStepBtn').disabled = false;
-    document.getElementById('nextStepBtn').addEventListener('click', () => { window.location.href = 'gallery.html'; });
+    document.getElementById('nextStepBtn').addEventListener('click', () => { window.location.href = `gallery.html?event=${slug}`; });
     return;
   }
 
@@ -204,7 +205,7 @@
     if (step < 3) { step += 1; renderStep(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     // Step 3's "Done" never forces a save — Download/Share/Add to Gallery
     // above are each independent, optional actions the guest already chose.
-    window.location.href = 'gallery.html';
+    window.location.href = `gallery.html?event=${slug}`;
   });
 
   renderStep();

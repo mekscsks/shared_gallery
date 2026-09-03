@@ -71,17 +71,33 @@
         <span class="text-[14px] text-ink-600">Continue as <span class="font-semibold text-ink-900">${existingName}</span></span>
         <span class="text-primary-600 text-sm font-semibold">Continue \u2192</span>
       </button>`;
-    document.getElementById('continueAsBtn').addEventListener('click', () => { window.location.href = 'gallery.html'; });
+    document.getElementById('continueAsBtn').addEventListener('click', async () => {
+      try {
+        await App.session.setGuestName(existingName);
+        window.location.href = `gallery.html?event=${slug}`;
+      } catch (e) {
+        console.error('[guest] session refresh failed:', e);
+        alert(e.message || 'Unable to start guest session. Please try again.');
+      }
+    });
   }
 
   nameInput.addEventListener('input', () => { enterBtn.disabled = nameInput.value.trim().length === 0; });
 
-  document.getElementById('nameForm').addEventListener('submit', (e) => {
+  document.getElementById('nameForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = nameInput.value.trim();
     if (!name) return;
-    App.session.setGuestName(name);
+    enterBtn.disabled = true;
     enterBtn.textContent = 'Entering\u2026';
-    setTimeout(() => { window.location.href = 'gallery.html'; }, 250);
+    try {
+      await App.session.setGuestName(name);
+      window.location.href = `gallery.html?event=${slug}`;
+    } catch (err) {
+      console.error('[guest] registration failed:', err);
+      enterBtn.disabled = false;
+      enterBtn.textContent = 'Continue';
+      alert(err.message || 'Unable to start guest session. Please try again.');
+    }
   });
 })();

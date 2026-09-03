@@ -9,9 +9,9 @@
   const settings = event.settings || {};
 
   document.getElementById('headerSlot').innerHTML = App.components.header(event, 'gallery');
-  document.getElementById('bottomNavSlot').innerHTML = App.components.bottomNav('gallery', settings);
+  document.getElementById('bottomNavSlot').innerHTML = App.components.bottomNav('gallery', settings, slug);
   document.getElementById('shareMemoryFabSlot').innerHTML = App.components.shareMemoryButton();
-  document.getElementById('desktopTabsSlot').innerHTML = App.components.desktopTabs('gallery', settings);
+  document.getElementById('desktopTabsSlot').innerHTML = App.components.desktopTabs('gallery', settings, slug);
   document.getElementById('uploadModalSlot').innerHTML = App.components.uploadModal(guestName, settings);
   document.getElementById('moreSheetSlot').innerHTML = App.components.moreSheet(event);
   document.getElementById('eventInfoModalSlot').innerHTML = App.components.eventInfoModal(event);
@@ -20,8 +20,11 @@
 
   // Respect event feature toggles: hide the secondary CTA entirely if the
   // admin has turned the photo strip off for this event.
+  const photoStripCta = document.getElementById('photoStripCta');
   if (settings.photoStripEnabled === false) {
-    document.getElementById('photoStripCta')?.remove();
+    photoStripCta?.remove();
+  } else if (photoStripCta) {
+    photoStripCta.href = `photostrip.html?event=${slug}`;
   }
 
   App.ui.initOverlays();

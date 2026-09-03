@@ -10,7 +10,7 @@ App.components.moreSheet = function renderMoreSheet(event) {
       <div class="w-10 h-1.5 bg-ink-200 rounded-full mx-auto mb-5"></div>
       <div class="space-y-1.5">
         ${event.settings?.photoStripEnabled !== false ? `
-        <a href="photostrip.html" class="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-sand transition-colors">
+        <a href="photostrip.html?event=${event.slug}" class="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-sand transition-colors">
           <span class="w-11 h-11 rounded-2xl bg-gold-500/15 text-gold-600 grid place-items-center text-xl">\ud83d\udcf7</span>
           <span class="text-left">
             <span class="block font-semibold text-ink-900">Create Photo Strip</span>

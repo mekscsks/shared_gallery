@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# Send API requests to the PHP backend
+RewriteRule ^api(?:/(.*))?$ backend/public/index.php [L,QSA]
+
+# Send uploaded storage requests to the PHP backend
+RewriteRule ^storage/uploads/(.*)$ backend/public/index.php [L,QSA]
+
+# Do not rewrite existing files/directories
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
