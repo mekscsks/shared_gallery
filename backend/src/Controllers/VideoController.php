@@ -69,7 +69,6 @@ class VideoController
 
         $maxBytes = (int) $event['max_video_size_mb'] * 1024 * 1024;
         $caption  = trim((string) ($_POST['caption'] ?? '')) ?: null;
-        $appUrl   = rtrim($_ENV['APP_URL'] ?? '', '/');
 
         $fileList      = self::normaliseFiles($files);
         $created       = [];
@@ -89,10 +88,9 @@ class VideoController
                 $stored['filename'],
                 $stored['mime'],
                 $stored['size'],
-                // No thumbnail until Drive/ffmpeg pipeline exists
                 null,
-                $appUrl . $stored['url'],
-                $appUrl . $stored['url'],
+                $stored['url'],
+                $stored['url'],
                 $caption,
                 $defaultStatus,
             ]);

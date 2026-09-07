@@ -5,17 +5,26 @@ function timeAgo(iso) {
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+/** Resolve a stored URL (may be relative like /storage/uploads/...) to a full URL. */
+function resolveUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) return url;
+  const base = (window.API_BASE || '').replace(/\/$/, '');
+  return base + url;
+}
+
 /** Single masonry tile — photo or video, tap/hover reveals uploader + caption. */
 App.components.mediaCard = function renderMediaCard(item, index) {
   const isVideo = item.type === 'video';
   const dateLabel = new Date(item.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const thumb = resolveUrl(item.thumbUrl);
   return `
   <button type="button" data-open-lightbox="${index}"
     aria-label="${isVideo ? 'Video' : 'Photo'} by ${item.uploaderName}${item.caption ? `: ${item.caption}` : ''}. Opens fullscreen viewer."
     class="group relative w-full rounded-2xl overflow-hidden bg-sand shadow-soft block text-left animate-rise focus:outline-none">
-    ${isVideo && !item.thumbUrl
+    ${isVideo && !thumb
       ? `<div class="w-full bg-ink-900 flex items-center justify-center" style="aspect-ratio:${item.aspect || 0.5625}"><svg width="32" height="32" viewBox="0 0 24 24" fill="white" opacity="0.4"><path d="M8 5v14l11-7Z"/></svg></div>`
-      : `<img src="${item.thumbUrl}" alt="${item.caption ? item.caption : 'Event memory shared by ' + item.uploaderName}" loading="lazy" style="aspect-ratio:${item.aspect || 1}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" onerror="this.closest('[data-open-lightbox]').classList.add('shimmer'); this.style.opacity='0'" />`
+      : `<img src="${thumb}" alt="${item.caption ? item.caption : 'Event memory shared by ' + item.uploaderName}" loading="lazy" style="aspect-ratio:${item.aspect || 1}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" onerror="this.closest('[data-open-lightbox]').classList.add('shimmer'); this.style.opacity='0'" />`
     }
     ${item.featured ? `<span class="absolute top-2.5 left-2.5 text-[10px] font-bold tracking-wide uppercase bg-gold-500 text-white px-2 py-1 rounded-full shadow-soft">Featured</span>` : ''}
     ${isVideo ? `
@@ -134,12 +143,12 @@ App.components.initLightbox = function initLightbox(items) {
         videoEl.className = 'max-h-[78vh] max-w-full rounded-lg animate-pop';
         img.parentNode.insertBefore(videoEl, img);
       }
-      videoEl.src = item.originalUrl || item.url;
+      videoEl.src = resolveUrl(item.originalUrl || item.url);
       videoEl.classList.remove('hidden');
     } else {
       if (videoEl) { videoEl.pause(); videoEl.classList.add('hidden'); }
       img.classList.remove('hidden');
-      img.src = item.mediumUrl || item.url;
+      img.src = resolveUrl(item.mediumUrl || item.url);
       img.alt = item.caption || 'Event memory shared by ' + item.uploaderName;
     }
     caption.textContent = item.caption || 'No caption';
@@ -168,13 +177,24 @@ App.components.initLightbox = function initLightbox(items) {
   ['lightboxNext', 'lightboxNextMobile'].forEach((id) => document.getElementById(id).addEventListener('click', next));
   ['lightboxPrev', 'lightboxPrevMobile'].forEach((id) => document.getElementById(id).addEventListener('click', prev));
 
-  document.getElementById('lightboxDownload').addEventListener('click', () => {
+  document.getElementById('lightboxDownload').addEventListener('click', async () => {
     const item = items[idx];
-    const a = document.createElement('a');
-    a.href = item.originalUrl || item.url;
-    a.download = `memory-${item.id}.${item.type === 'video' ? 'mp4' : 'jpg'}`;
-    document.body.appendChild(a); a.click(); a.remove();
+    const url = resolveUrl(item.originalUrl || item.url);
+    const ext = item.type === 'video' ? 'mp4' : 'jpg';
     App.ui.toast('Preparing download\u2026', { icon: '\u2b07\ufe0f' });
+    try {
+      const res = await fetch(url, { credentials: 'include' });
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `memory-${item.id}.${ext}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+    } catch (e) {
+      // Fallback: open in new tab so the page is never navigated away
+      window.open(url, '_blank', 'noopener');
+    }
   });
 
   document.getElementById('lightboxShare').addEventListener('click', async () => {

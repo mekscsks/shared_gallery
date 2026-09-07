@@ -21,10 +21,8 @@ App.api = (function () {
   const LATENCY = 450;
   const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
-  // Empty string = same origin. Works for both local dev (when the PHP server
-  // is proxied or served from the same host) and production deployments.
-  // Override by setting window.API_BASE before loading this file if your
-  // backend lives on a different origin (e.g. during local split-server dev).
+  // Points to the PHP backend. Change to '' when frontend and backend share
+  // the same origin in production.
   const API_BASE = window.API_BASE || '';
 
   /**
@@ -296,6 +294,21 @@ App.api = (function () {
   async function deletePhoto(eventId, photoId) {
     return apiFetch(`/api/admin/photos/${photoId}`, { method: 'DELETE' });
   }
+  async function hideVideo(eventId, videoId, hidden = true) {
+    return apiFetch(`/api/admin/videos/${videoId}/visibility`, {
+      method: 'PATCH',
+      body: JSON.stringify({ hidden }),
+    });
+  }
+  async function featureVideo(eventId, videoId, featured = true) {
+    return apiFetch(`/api/admin/videos/${videoId}/feature`, {
+      method: 'PATCH',
+      body: JSON.stringify({ featured }),
+    });
+  }
+  async function deleteVideo(eventId, videoId) {
+    return apiFetch(`/api/admin/videos/${videoId}`, { method: 'DELETE' });
+  }
   async function hideMessage(eventId, msgId, hidden = true) {
     return apiFetch(`/api/admin/guestbook/${msgId}/visibility`, {
       method: 'PATCH',
@@ -319,7 +332,8 @@ App.api = (function () {
   return {
     getEvent, getPhotos, getVideos, getAllMedia, getGuestbookMessages,
     uploadMedia, uploadAsset, buildUploadFormData, submitGuestbookMessage, getPhotoStripTemplates, createPhotoStrip,
-    hidePhoto, featurePhoto, deletePhoto, hideMessage, deleteMessage,
+    hidePhoto, featurePhoto, deletePhoto, hideVideo, featureVideo, deleteVideo,
+    hideMessage, deleteMessage,
     updateEventSettings, reportPhoto, openCamera, capturePhoto, captureSequence,
     adminLogin, adminLogout, myEvents,
     superDashboard, superListEvents, superCreateEvent, superGetEvent, superUpdateEvent,

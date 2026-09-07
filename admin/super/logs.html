@@ -23,6 +23,7 @@
 
   const el = document.getElementById('superPageContent');
   let filters = { action: '', from: '', to: '', limit: 50, offset: 0 };
+  let total = 0;
 
   async function load() {
     try {
@@ -32,11 +33,31 @@
       if (filters.to)     params.to     = filters.to;
       params.limit  = filters.limit;
       params.offset = filters.offset;
-      const logs = await App.api.superListLogs(params);
+      const res = await App.api.superListLogs(params);
+      // Support both {items, total} envelope and plain array
+      const logs = Array.isArray(res) ? res : (res.items || []);
+      total = Array.isArray(res) ? logs.length : (res.total ?? logs.length);
       render(logs);
     } catch (e) {
       el.innerHTML = `<p class="text-red-500">Failed to load: ${e.message}</p>`;
     }
+  }
+
+  function paginationBar() {
+    const page    = Math.floor(filters.offset / filters.limit) + 1;
+    const pages   = Math.max(1, Math.ceil(total / filters.limit));
+    const hasPrev = filters.offset > 0;
+    const hasNext = filters.offset + filters.limit < total;
+    return `
+    <div class="flex items-center justify-between mt-4 text-sm">
+      <span class="text-ink-400">Page ${page} of ${pages} &middot; ${total} log${total === 1 ? '' : 's'}</span>
+      <div class="flex gap-2">
+        <button id="prevPage" ${hasPrev ? '' : 'disabled'}
+          class="px-4 py-2 rounded-xl border border-ink-200 font-semibold ${hasPrev ? 'hover:bg-ink-50' : 'opacity-40 cursor-not-allowed'}">← Prev</button>
+        <button id="nextPage" ${hasNext ? '' : 'disabled'}
+          class="px-4 py-2 rounded-xl border border-ink-200 font-semibold ${hasNext ? 'hover:bg-ink-50' : 'opacity-40 cursor-not-allowed'}">Next →</button>
+      </div>
+    </div>`;
   }
 
   function render(logs) {
@@ -70,7 +91,8 @@
           </tr>`).join('')}
         </tbody>
       </table>
-    </div>`}`;
+    </div>
+    ${paginationBar()}`}`;
 
     document.getElementById('applyFilters').addEventListener('click', () => {
       filters.action = document.getElementById('actionFilter').value.trim();
@@ -79,6 +101,8 @@
       filters.offset = 0;
       load();
     });
+    document.getElementById('prevPage')?.addEventListener('click', () => { filters.offset = Math.max(0, filters.offset - filters.limit); load(); });
+    document.getElementById('nextPage')?.addEventListener('click', () => { filters.offset += filters.limit; load(); });
   }
 
   load();

@@ -21,7 +21,7 @@ App.components.adminShell = function renderAdminShell(event, activeId, title, su
   <div class="min-h-screen flex bg-sand">
     <aside class="hidden lg:flex lg:flex-col w-64 bg-ink-900 text-white shrink-0 p-5">
       <div class="flex items-center gap-2.5 mb-8 px-1">
-        <div class="w-9 h-9 rounded-xl bg-primary-500 grid place-items-center font-display font-bold text-sm">${event.logoInitials}</div>
+        <div class="w-9 h-9 rounded-xl bg-primary-500 grid place-items-center font-display font-bold text-sm overflow-hidden">${event.logoUrl ? `<img src="${event.logoUrl}" class="w-full h-full object-cover" />` : event.logoInitials}</div>
         <div class="min-w-0">
           <p class="font-display font-semibold leading-tight truncate">${event.name}</p>
           <p class="text-[11px] text-white/40">Admin console</p>
@@ -42,7 +42,7 @@ App.components.adminShell = function renderAdminShell(event, activeId, title, su
 
     <div class="flex-1 min-w-0">
       <header class="lg:hidden sticky top-0 z-30 bg-ink-900 text-white px-4 py-3.5 flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-primary-500 grid place-items-center font-display font-bold text-xs">${event.logoInitials}</div>
+        <div class="w-8 h-8 rounded-lg bg-primary-500 grid place-items-center font-display font-bold text-xs overflow-hidden">${event.logoUrl ? `<img src="${event.logoUrl}" class="w-full h-full object-cover" />` : event.logoInitials}</div>
         <p class="font-display font-semibold text-sm">${event.name} · Admin</p>
         <button type="button" id="adminLogoutBtnMobile" class="ml-auto text-[12px] font-semibold text-white/70">Sign out</button>
       </header>

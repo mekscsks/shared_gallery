@@ -27,11 +27,56 @@
     <div class="col-span-full text-ink-400 text-sm">Loading…</div></div>
     <div class="mt-8" id="recentLogs"></div>`;
 
+  const LOG_LIMIT = 10;
+  let logOffset = 0;
+  let logTotal  = 0;
+
+  async function renderLogs(offset) {
+    logOffset = offset;
+    let rows = [];
+    try {
+      const res = await App.api.superListLogs({ limit: LOG_LIMIT, offset });
+      rows     = Array.isArray(res) ? res : (res.items || []);
+      logTotal = Array.isArray(res) ? (offset === 0 ? rows.length : logTotal) : (res.total ?? logTotal);
+    } catch (_) {}
+    const page    = Math.floor(offset / LOG_LIMIT) + 1;
+    const pages   = Math.max(1, Math.ceil(logTotal / LOG_LIMIT));
+    const hasPrev = offset > 0;
+    const hasNext = offset + LOG_LIMIT < logTotal;
+    const rowsHtml = rows.map(l => `
+      <tr class="border-b border-ink-100 text-sm">
+        <td class="py-2.5 pr-4 px-5 text-ink-400 whitespace-nowrap">${new Date(l.created_at).toLocaleString()}</td>
+        <td class="py-2.5 pr-4 font-medium">${l.admin_name || '\u2014'}</td>
+        <td class="py-2.5 pr-4"><span class="font-mono text-xs bg-ink-100 px-2 py-0.5 rounded">${l.action}</span></td>
+        <td class="py-2.5 text-ink-500">${l.description || '\u2014'}</td>
+      </tr>`).join('');
+    document.getElementById('recentLogs').innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-display font-semibold text-lg">Recent Activity</h2>
+        <span class="text-[13px] text-ink-400">Page ${page} of ${pages}</span>
+      </div>
+      <div class="bg-white rounded-2xl border border-ink-100 shadow-soft overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="text-left text-[12px] font-semibold text-ink-400 border-b border-ink-100">
+            <th class="px-5 py-3">Time</th><th class="px-5 py-3">Admin</th>
+            <th class="px-5 py-3">Action</th><th class="px-5 py-3">Description</th>
+          </tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="4" class="px-5 py-4 text-ink-400">No activity yet.</td></tr>'}</tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between mt-3 text-sm">
+        <span class="text-ink-400">${logTotal} log${logTotal === 1 ? '' : 's'} total</span>
+        <div class="flex gap-2">
+          <button id="logPrev" ${hasPrev ? '' : 'disabled'}
+class="px-4 py-2 rounded-xl border border-ink-200 font-semibold ${hasPrev ? 'hover:bg-ink-50' : 'opacity-40 cursor-not-allowed'}">← Prev</button>          <button id="logNext" ${hasNext ? '' : 'disabled'}
+class="px-4 py-2 rounded-xl border border-ink-200 font-semibold ${hasNext ? 'hover:bg-ink-50' : 'opacity-40 cursor-not-allowed'}">Next →</button>        </div>
+      </div>`;
+    document.getElementById('logPrev')?.addEventListener('click', () => renderLogs(Math.max(0, logOffset - LOG_LIMIT)));
+    document.getElementById('logNext')?.addEventListener('click', () => renderLogs(logOffset + LOG_LIMIT));
+  }
+
   try {
-    const [stats, logs] = await Promise.all([
-      App.api.superDashboard(),
-      App.api.superListLogs({ limit: 10 }),
-    ]);
+    const stats = await App.api.superDashboard();
 
     const card = (label, value, icon, tint) => `
       <div class="bg-white rounded-2xl border border-ink-100 p-5 shadow-soft">
@@ -41,38 +86,21 @@
       </div>`;
 
     document.getElementById('statGrid').innerHTML =
-      card('Total Events',   stats.events.total,    '📅', 'bg-blue-50')  +
-      card('Active Events',  stats.events.active,   '✅', 'bg-green-50') +
-      card('Draft Events',   stats.events.draft,    '📝', 'bg-yellow-50')+
-      card('Archived',       stats.events.archived, '📦', 'bg-ink-50')   +
-      card('Event Admins',   stats.admins.total,    '👤', 'bg-purple-50')+
-      card('Guests',         stats.guests,          '🙋', 'bg-pink-50')  +
-      card('Photos',         stats.photos,          '🖼️', 'bg-orange-50')+
-      card('Videos',         stats.videos,          '🎬', 'bg-red-50')   +
-      card('Storage (MB)',   stats.storageMb,       '💾', 'bg-teal-50');
-
-    const logRows = logs.map(l => `
-      <tr class="border-b border-ink-100 text-sm">
-        <td class="py-2.5 pr-4 text-ink-400 whitespace-nowrap">${new Date(l.created_at).toLocaleString()}</td>
-        <td class="py-2.5 pr-4 font-medium">${l.admin_name || '—'}</td>
-        <td class="py-2.5 pr-4"><span class="font-mono text-xs bg-ink-100 px-2 py-0.5 rounded">${l.action}</span></td>
-        <td class="py-2.5 text-ink-500">${l.description || '—'}</td>
-      </tr>`).join('');
-
-    document.getElementById('recentLogs').innerHTML = `
-      <h2 class="font-display font-semibold text-lg mb-3">Recent Activity</h2>
-      <div class="bg-white rounded-2xl border border-ink-100 shadow-soft overflow-x-auto">
-        <table class="w-full px-5 py-2">
-          <thead><tr class="text-left text-[12px] font-semibold text-ink-400 border-b border-ink-100">
-            <th class="px-5 py-3">Time</th><th class="px-5 py-3">Admin</th>
-            <th class="px-5 py-3">Action</th><th class="px-5 py-3">Description</th>
-          </tr></thead>
-          <tbody class="px-5">${logRows || '<tr><td colspan="4" class="px-5 py-4 text-ink-400">No activity yet.</td></tr>'}</tbody>
-        </table>
-      </div>`;
+      card('Total Events',   stats.events.total,    '\ud83d\udcc5', 'bg-blue-50')  +
+      card('Active Events',  stats.events.active,   '\u2705', 'bg-green-50') +
+      card('Draft Events',   stats.events.draft,    '\ud83d\udcdd', 'bg-yellow-50')+
+      card('Archived',       stats.events.archived, '\ud83d\udce6', 'bg-ink-50')   +
+      card('Event Admins',   stats.admins.total,    '\ud83d\udc64', 'bg-purple-50')+
+      card('Guests',         stats.guests,          '\ud83d\ude4b', 'bg-pink-50')  +
+      card('Photos',         stats.photos,          '\ud83d\uddbc\ufe0f', 'bg-orange-50')+
+      card('Videos',         stats.videos,          '\ud83c\udfa6', 'bg-red-50')   +
+      card('Storage (MB)',   stats.storageMb,       '\ud83d\udcbe', 'bg-teal-50');
   } catch (e) {
     el.innerHTML = `<p class="text-red-500">Failed to load dashboard: ${e.message}</p>`;
+    return;
   }
+
+  renderLogs(0);
 })();
 </script>
 </body>

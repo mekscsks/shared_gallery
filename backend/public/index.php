@@ -139,6 +139,9 @@ $router->post('/api/admin/events/{id}/assets', [AdminController::class, 'uploadA
 $router->patch('/api/admin/photos/{id}/feature',      [AdminController::class, 'featurePhoto']);
 $router->patch('/api/admin/photos/{id}/visibility',   [AdminController::class, 'hidePhoto']);
 $router->delete('/api/admin/photos/{id}',             [AdminController::class, 'deletePhoto']);
+$router->patch('/api/admin/videos/{id}/feature',      [AdminController::class, 'featureVideo']);
+$router->patch('/api/admin/videos/{id}/visibility',   [AdminController::class, 'hideVideo']);
+$router->delete('/api/admin/videos/{id}',             [AdminController::class, 'deleteVideo']);
 $router->patch('/api/admin/guestbook/{id}/visibility',[AdminController::class, 'hideMessage']);
 $router->delete('/api/admin/guestbook/{id}',          [AdminController::class, 'deleteMessage']);
 $router->patch('/api/admin/events/{id}/settings',     [AdminController::class, 'updateSettings']);
@@ -152,6 +155,13 @@ if (str_starts_with($path, '/storage/uploads/')) {
         $mime = mime_content_type($file) ?: 'application/octet-stream';
         header('Content-Type: ' . $mime);
         header('Cache-Control: public, max-age=31536000, immutable');
+        // Re-emit CORS headers so cross-origin frontends can load media files
+        if ($origin && in_array($origin, $allowedOrigins, true)) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Credentials: true');
+        } elseif (!$origin) {
+            header('Access-Control-Allow-Origin: *');
+        }
         readfile($file);
         exit;
     }

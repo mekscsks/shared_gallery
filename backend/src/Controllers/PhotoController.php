@@ -85,7 +85,6 @@ class PhotoController
 
         $maxBytes = (int) $event['max_photo_size_mb'] * 1024 * 1024;
         $caption  = trim((string) ($_POST['caption'] ?? '')) ?: null;
-        $appUrl   = rtrim($_ENV['APP_URL'] ?? '', '/');
 
         // Normalise $_FILES multi-upload into a flat list of single-file arrays
         $fileList = self::normaliseFiles($files);
@@ -107,9 +106,9 @@ class PhotoController
                 $stored['filename'],
                 $stored['mime'],
                 $stored['size'],
-                $appUrl . $stored['url'],
-                $appUrl . $stored['url'],
-                $appUrl . $stored['url'],
+                $stored['url'],
+                $stored['url'],
+                $stored['url'],
                 $caption,
                 $defaultStatus,
             ]);

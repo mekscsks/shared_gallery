@@ -1,16 +1,5 @@
 # Shared Event Gallery
 
-> **Scope note, read this first:** only the **frontend** described below has
-> been built and is running code you can open in a browser today. The
-> database schema, PHP API, admin authentication/RBAC, and Google Drive
-> integration described in this document are the **planned** backend — none
-> of that server-side code exists in this repository yet. Every checklist in
-> [Section 27](#27-current-status) reflects that honestly. Treat the backend
-> sections as a specification for the next phase of work, not a changelog of
-> what's done.
-
----
-
 ## 1. Project Overview
 
 Shared Event Gallery is a private, QR-code-accessed event memory platform.
@@ -19,8 +8,7 @@ immediately contribute photos, videos, and guestbook messages to a shared
 gallery for that event — plus optionally generate a photobooth-style photo
 strip as a keepsake.
 
-It's designed to work for any single-day or multi-day gathering, not just
-one event type:
+It's designed to work for any single-day or multi-day gathering:
 
 - RCY Training 2026 (the current sample event)
 - School events, Foundation Days, Intramurals, Graduations
@@ -47,240 +35,239 @@ independent configuration, branding, and content.
 - Per-event branding (colors, logo, cover image, copy)
 - Admin moderation (feature / hide / delete / filter)
 - Multi-event support from a single codebase
-- Google Drive as the media storage backend *(planned)*
-- MySQL as the metadata store *(planned)*
-- Secure, role-based admin authentication *(planned)*
+- Local file storage for media uploads
+- MySQL as the metadata store
+- Secure, role-based admin authentication
 
 ## 3. System Architecture
 
 ```
 Browser
     ↓
-Tailwind CSS + Vanilla JavaScript   ← built (this repo)
+Tailwind CSS + Vanilla JavaScript   ← built
     ↓
-PHP REST API                        ← planned
+PHP REST API                        ← built
     ↓
-MySQL                               ← planned
+MySQL / MariaDB                     ← built
     ↓
-Google Drive API                    ← planned
-    ↓
-Google Drive                        ← planned
+Local filesystem storage            ← built (backend/storage/uploads/)
 ```
 
-**MySQL** (planned) owns: events, admins, guests, sessions, media metadata,
+**MySQL** owns: events, admins, guests, sessions, media metadata,
 moderation state, guestbook entries, photo strip configuration, activity
-logs.
+logs, system settings, storage usage cache.
 
-**Google Drive** (planned) owns the actual bytes: photos, videos, generated
-photo strip images, and event assets (logo, cover photo) — organized one
-folder tree per event.
+**Local filesystem** owns the actual bytes: photos, videos, and event
+assets (logo, cover photo) — organized per event under
+`backend/storage/uploads/`.
 
-**PHP** (planned) owns: authentication, authorization, input/file
-validation, the REST API surface, talking to Drive, and all business logic.
-The frontend is never trusted to enforce anything security-relevant.
+**PHP** owns: authentication, authorization, input/file validation, the
+REST API surface, and all business logic. The frontend is never trusted to
+enforce anything security-relevant.
 
-**Frontend** (built) owns: the guest and admin UI, and all API calls,
-funneled through one file (`js/api.js`) so the backend can be swapped in
-without touching any page.
+**Frontend** owns: the guest and admin UI, and all API calls, funneled
+through one file (`js/api.js`) so the backend can be swapped in without
+touching any page.
 
 ## 4. Technology Stack
 
-**Frontend — built**
+**Frontend**
 - HTML5
 - Tailwind CSS (via CDN, no build step)
 - Vanilla JavaScript (no framework)
-- `localStorage` for prototype-only guest session & mock data persistence
+- `localStorage` for guest session persistence
 
-**Backend — planned**
+**Backend**
 - PHP 8.2+
-- Hand-rolled REST API (no framework assumed yet)
+- Hand-rolled REST API (no framework)
 - PDO for all database access
-- Composer for dependency management
+- Composer for dependency management (`vlucas/phpdotenv`)
 
-**Database — planned**
-- MySQL 8+
+**Database**
+- MySQL 8+ / MariaDB 11.4
 
-**Storage — planned**
-- Google Drive API (server-side only, via a service account)
+**Storage**
+- Local filesystem (`backend/storage/uploads/`)
 
-**Development**
+**Development / Deployment**
 - Git
-- Composer, PHP CLI, MySQL CLI (once the backend exists)
+- Docker + Docker Compose (recommended)
+- PHP CLI + MySQL CLI (for local dev without Docker)
 
 ## 5. Project Structure
 
-This is the actual tree in this repository today:
-
 ```
-rcy-gallery/
+shared-gallery/
 ├── index.html               Welcome screen (guest name entry)
-├── gallery.html              Main masonry gallery
-├── guestbook.html            Guestbook wall + composer
-├── photostrip.html           4-step optional Photo Strip Builder
+├── gallery.html             Main masonry gallery
+├── guestbook.html           Guestbook wall + composer
+├── photostrip.html          4-step optional Photo Strip Builder
 │
 ├── admin/
-│   ├── dashboard.html         Stats + recent activity
-│   ├── gallery.html            Moderate photos & videos
-│   ├── guestbook.html          Moderate guestbook messages
-│   ├── settings.html           Event profile, branding, feature toggles
-│   └── qrcode.html             QR preview, link, download/print
+│   ├── login.html           Admin login screen
+│   ├── dashboard.html       Event Admin — stats + recent activity
+│   ├── gallery.html         Event Admin — moderate photos & videos
+│   ├── guestbook.html       Event Admin — moderate guestbook messages
+│   ├── settings.html        Event Admin — event profile, branding, feature toggles
+│   ├── qrcode.html          Event Admin — QR preview, link, download/print
+│   └── super/
+│       ├── dashboard.html   Super Admin — platform stats
+│       ├── events.html      Super Admin — event list + create
+│       ├── event-detail.html Super Admin — per-event detail + admin assignment
+│       ├── admins.html      Super Admin — admin user management
+│       ├── guests.html      Super Admin — guest list across all events
+│       ├── logs.html        Super Admin — activity log viewer
+│       └── settings.html    Super Admin — system settings
 │
 ├── js/
-│   ├── tailwind-config.js     Theme tokens (colors, type, shadows, motion)
-│   ├── mockData.js             Sample event, photos, videos, guestbook, templates
-│   ├── api.js                  API abstraction + guest session helpers
-│   ├── components/             One file per reusable UI piece
-│   │   ├── header.js, bottomNav.js, galleryGrid.js, uploadModal.js,
-│   │   ├── guestbook.js, photoStrip.js, adminShell.js, sheetsAndToasts.js
-│   └── pages/                  One controller per page, wires components + api
+│   ├── tailwind-config.js   Theme tokens
+│   ├── mockData.js          Sample event, photos, videos, guestbook, templates
+│   ├── api.js               API abstraction + guest session helpers
+│   ├── dev-config.js        LOCAL DEV ONLY — API base URL + dev login bypass
+│   ├── components/
+│   │   ├── header.js, bottomNav.js, galleryGrid.js, uploadModal.js
+│   │   ├── guestbook.js, photoStrip.js, adminShell.js, superShell.js
+│   │   └── sheetsAndToasts.js
+│   └── pages/
 │       ├── welcome.js, gallery.js, guestbook.js, photostrip.js
 │       └── admin-dashboard.js, admin-gallery.js, admin-guestbook.js,
 │           admin-settings.js, admin-qrcode.js
 │
 ├── css/
-│   └── styles.css              Fonts, masonry layout, the "perf-edge"
-│                                photobooth motif, skeleton shimmer,
-│                                reduced-motion support
+│   └── styles.css
 │
+├── backend/
+│   ├── public/
+│   │   ├── index.php        Entry point
+│   │   └── router.php       PHP built-in server router
+│   ├── src/
+│   │   ├── Controllers/     AuthController, EventController, GuestController,
+│   │   │                    PhotoController, VideoController, GuestbookController,
+│   │   │                    PhotoStripController, AdminController, SuperAdminController
+│   │   ├── Core/            Database, Request, Response, Router, Uploader
+│   │   └── Middleware/      AdminAuth, GuestAuth
+│   ├── cli/
+│   │   ├── create-admin.php       Seed a Super Admin account
+│   │   └── create-event-admin.php Seed an Event Admin account
+│   ├── storage/
+│   │   └── uploads/         Uploaded media files, organized by event id
+│   ├── vendor/              Composer dependencies
+│   ├── .env                 Local environment config (not committed)
+│   ├── .env.example         Template for .env
+│   ├── .gitignore
+│   ├── composer.json
+│   └── composer.lock
+│
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
+├── .htaccess
+├── serve.json
 └── README.md
 ```
 
-**Not present yet** (planned, described for reference in later sections):
-`backend/`, `.env.example`, `.gitignore`, `composer.json`. These will be
-added when backend work starts — this README will be updated to match at
-that point, per the note at the top of this document.
-
 ## 6. User Roles
 
-### Super Admin *(planned — no auth exists yet)*
+### Super Admin
 Full system access. Can create events, manage all events, manage Event
 Admins, assign admins to events, manage platform-level settings, and view
 activity logs across every event.
 
-### Event Admin *(planned)*
+### Event Admin
 Scoped to the event(s) they're assigned to. Can edit their event's settings,
 moderate photos/videos and guestbook messages, and manage the event's
 QR/link. Cannot manage other admins, create Super Admins, or touch events
-they aren't assigned to, or change system-level settings.
+they aren't assigned to.
 
-### Guest *(built, in the sense described below)*
+### Guest
 No account. Can enter a name, browse the gallery, upload photos/videos,
 post guestbook messages, build an optional photo strip, and download/share
-memories. A guest is **not** a traditional authenticated user — see
-Section 7.
+memories.
 
 ```
-SUPER ADMIN
-    ↓
-All events
-
-EVENT ADMIN
-    ↓
-Only assigned events
-
-GUEST
-    ↓
-One event, name-based session only
+SUPER ADMIN  →  All events + platform settings
+EVENT ADMIN  →  Only assigned events
+GUEST        →  One event, name-based session only
 ```
-
-Today, the admin pages in this repo have **no login screen and no access
-control** — they're open HTML files, meant to represent what an
-authenticated admin would see once auth exists. Don't treat them as secured.
 
 ## 7. Authentication & Authorization
 
-**Admin authentication (planned):**
-- Email + password, hashed with `password_hash()` and checked with
-  `password_verify()`
-- Server-side sessions, referenced client-side by a hashed bearer token
-- Every admin request re-validated against the token server-side
+**Admin authentication:**
+- Email + password, hashed with `password_hash()` / verified with `password_verify()`
+- PHP server-side sessions (`$_SESSION`)
+- Every admin request re-validated server-side via `AdminAuth` middleware
+- `GET /api/admin/me` used on page load to check session and redirect accordingly
+- Login page (`admin/login.html`) redirects Super Admins to `super/dashboard.html`
+  and Event Admins to `dashboard.html`
 
-**Guest "authentication" (built, deliberately weak):**
-- A guest types a display name; the frontend stores a name, a
-  locally-generated `guestId`, and a slot for a future `sessionToken` in
-  `localStorage`, scoped per event (see `App.session` in `js/api.js`)
-- This is a convenience, not security — it only saves a returning guest on
-  the same device from retyping their name
-- The intended upgrade path: `setGuestName()` calls
-  `POST /api/events/{id}/guests`, and the server-issued token replaces the
-  client-generated id as the thing actually presented on later requests
+**Dev-mode login bypass:**
+- `js/dev-config.js` intercepts `App.api.adminLogin()` locally so the login
+  page works without a running PHP server. This file must not be included in
+  production.
 
-**Role-based access control (planned):** every admin-only PHP endpoint
-checks the caller's role and, for Event Admins, checks that the target
-event is one they're assigned to — enforced server-side, never inferred
-from what the UI happens to show or hide.
+**Guest "authentication":**
+- A guest types a display name; the frontend stores a name, a locally-generated
+  `guestId`, and a `sessionToken` slot in `localStorage`, scoped per event
+- `POST /api/events/{id}/guests` issues a server-side guest session token that
+  replaces the client-generated id on subsequent requests
+
+**Role-based access control:** every admin-only PHP endpoint checks the
+caller's role and, for Event Admins, checks that the target event is one
+they're assigned to — enforced server-side via `AdminAuth`.
 
 ## 8. Database
 
-**None of the tables below exist yet.** This is the planned schema.
+Schema lives in `shared_event_gallery (2).sql`. Run it to create all tables.
 
-| Table | Purpose | Key fields | Relationships |
-|---|---|---|---|
-| `admin_users` | Super Admin & Event Admin accounts | id, email, password_hash, role | has many `event_admins` |
-| `admin_sessions` | Server-side admin session tokens | id, admin_user_id, token_hash, expires_at | belongs to `admin_users` |
-| `events` | One row per event | id, slug, name, description, date, location, theme, status | has many photos/videos/guestbook/admins |
-| `event_admins` | Which admins can manage which events | event_id, admin_user_id | joins `events` ↔ `admin_users` |
-| `guests` | Guest identities scoped to an event | id, event_id, display_name, created_at | has many `guest_sessions`, photos, videos, guestbook rows |
-| `guest_sessions` | Guest session tokens (once issued server-side) | id, guest_id, token_hash, expires_at | belongs to `guests` |
-| `photos` | Photo metadata | id, event_id, guest_id, drive_file_id, caption, status, featured, created_at | belongs to `events`, `guests` |
-| `videos` | Video metadata | id, event_id, guest_id, drive_file_id, duration, status, created_at | belongs to `events`, `guests` |
-| `guestbook` | Written messages | id, event_id, guest_id, message, status, created_at | belongs to `events`, `guests` |
-| `photo_strips` | Generated strip configs + optional gallery photo id | id, event_id, guest_id, template_id, config_json, added_to_gallery | belongs to `events`, `guests` |
-| `activity_logs` | Audit trail for admin + moderation actions | id, actor_type, actor_id, action, target_type, target_id, created_at | polymorphic |
-| `system_settings` | Platform-level config (Super Admin only) | key, value | none |
-| `event_storage_usage` | Cached Drive usage per event | event_id, bytes_used, updated_at | belongs to `events` |
-
-```
-admin_users ──< event_admins >── events ──< photos
-     │                              │    ──< videos
-     └──< admin_sessions            │    ──< guestbook
-                                     │    ──< photo_strips
-                                     └──< event_storage_usage
-
-guests ──< guest_sessions
-guests ──< photos / videos / guestbook / photo_strips (guest_id)
-```
+| Table | Purpose |
+|---|---|
+| `admin_users` | Super Admin & Event Admin accounts |
+| `admin_sessions` | Server-side admin session tokens |
+| `events` | One row per event |
+| `event_admins` | Which admins can manage which events |
+| `guests` | Guest identities scoped to an event |
+| `guest_sessions` | Guest session tokens |
+| `photos` | Photo metadata + file paths |
+| `videos` | Video metadata + file paths |
+| `guestbook` | Written messages |
+| `photo_strips` | Generated strip configs |
+| `activity_logs` | Audit trail for admin + moderation actions |
+| `system_settings` | Platform-level config (Super Admin only) |
+| `event_storage_usage` | Cached storage usage per event |
 
 ## 9. Event System
 
-Multi-event by design: every event is a row in `events` (planned) with its
-own slug, branding, feature toggles, privacy settings, upload limits,
-moderation setting, Drive folder reference, and status.
+Every event is a row in `events` with its own slug, branding, feature
+toggles, privacy settings, upload limits, moderation setting, and status.
 
-Planned event statuses:
+Event statuses:
 
 ```
 draft      — being configured, not yet visible to guests
 active     — live, guests can access it via slug/QR
 archived   — read-only, kept for posterity
-disabled   — hidden entirely, e.g. after an incident
+disabled   — hidden entirely
 ```
-
-Today, the frontend has exactly one event wired up (`rcy-training-2026`)
-via `js/mockData.js`, with its settings editable through `admin/settings.html`
-(stored in `localStorage`, not a database).
 
 ## 10. Guest Experience
 
 ```
-Scan QR
+Scan QR / open link
    ↓
 Event Welcome Screen   (index.html)
    ↓
 Enter Name             (no registration, no password)
    ↓
-Guest Session          (name + guestId in localStorage)
+Guest Session          (name + token in localStorage)
    ↓
 Gallery                (gallery.html)
    ↓
-Choose: Photos · Videos · Guestbook · Photo Strip (optional)
+Photos · Videos · Guestbook · Photo Strip (optional)
 ```
-
-No account creation exists anywhere in this flow, by design.
 
 ## 11. Photo & Video System
 
-Planned production flow:
+Upload flow:
 
 ```
 Guest
@@ -289,79 +276,38 @@ Frontend (FormData)
  ↓
 PHP API — validate guest, event, file type, file size
  ↓
-Upload to Google Drive
+Save to backend/storage/uploads/{event_id}/
  ↓
-Store metadata + Drive file id in MySQL
+Store metadata + file path in MySQL
  ↓
 Gallery reflects the new item
 ```
 
-**Today**, `uploadMedia()` in `js/api.js` reads the file as a base64 data
-URL purely so the browser can preview and "store" it in `localStorage` —
-this is explicitly a prototype-only shortcut. Production uploads must not
-use base64; see `App.api.buildUploadFormData()` in `js/api.js`, which
-already builds the real multipart `FormData` shape (`caption`, `guest_id`,
-`files[]`) that the production version of `uploadMedia()` should send
-instead.
+Files are served directly from `backend/storage/uploads/`. The frontend
+uses `thumbnail_url`, `preview_url`, and `original_url` per item so the
+gallery grid, lightbox, and downloads each load an appropriately-sized file.
 
-The frontend is written to support three derivative URLs per item —
-`thumbnail_url`, `medium_url`, `original_url` — so the gallery grid, the
-lightbox, and downloads can each load an appropriately-sized image instead
-of always fetching the original. Mock data currently points all three at
-the same source image since no thumbnailing pipeline exists yet.
+## 12. Storage
 
-## 12. Google Drive Storage
+Media files are stored locally under `backend/storage/uploads/`, organized
+by event id. MySQL stores each file's path and metadata — never the file
+bytes themselves.
 
-Planned folder structure:
-
-```
-Shared Event Gallery/
-│
-├── RCY Training 2026/
-│   ├── Photos/
-│   ├── Videos/
-│   ├── Photo Strips/
-│   └── Assets/
-│
-├── Graduation 2026/
-│   ├── Photos/
-│   ├── Videos/
-│   ├── Photo Strips/
-│   └── Assets/
-```
-
-MySQL stores each file's Drive file id and metadata — never the file bytes
-themselves. Google service account credentials must live in server-side
-environment variables only (see Section 20); they must never be stored in
-MySQL, committed to the repo, or referenced from any frontend file. The
-frontend never talks to Google Drive directly — see Section 17.
+Google Drive integration is not implemented. The `events` table has Drive
+folder id columns reserved for a future migration if needed.
 
 ## 13. Guestbook
 
-Fields (planned schema, already reflected in the frontend's data shape):
-guest name, message, event id, moderation status, created timestamp.
-
-Planned statuses: `pending`, `approved`, `hidden`, `deleted`. Today the
-frontend only distinguishes `hidden` vs. not — there's no moderation queue
-yet since there's no `moderation_enabled` concept wired to anything
-server-side (see Section 16).
-
-The guestbook page today has explicit states for: empty ("No messages yet"),
-loading (skeleton), submitting ("Posting…"), success (toast + new card),
-and error ("We couldn't load the guestbook" / "Couldn't post your message"
-with retry).
+Statuses: `pending`, `approved`, `hidden`, `deleted`. When
+`moderation_enabled` is on for an event, new messages land as `pending`
+until an admin approves them.
 
 ## 14. Optional Photo Strip
 
-Deliberately a bonus feature — one secondary button in the gallery
-(`📷 Create Photo Strip`), never a required step.
-
 ```
-Gallery
+Gallery → Create Photo Strip
  ↓
-Create Photo Strip
- ↓
-Step 1 — Choose 3–4 photos (tap a selected photo to swap it)
+Step 1 — Choose 3–4 photos
  ↓
 Step 2 — Choose a template (Classic · Minimal · Event Branded · Playful)
  ↓
@@ -369,205 +315,131 @@ Step 3 — Customize (logo, event name, custom text, background, stickers)
  ↓
 Step 4 — Preview
  ↓
-Download Photo Strip · Share · Add to Event Gallery   (each independent)
+Download · Share · Add to Event Gallery   (each independent)
 ```
 
-The guest is never forced to publish the strip: Download and Share don't
-touch the gallery at all, and "Add to Event Gallery" is its own explicit
-button, not a checkbox bundled into a "Done" action.
-
-The strip currently renders as live HTML/CSS
-(`App.components.photoStripFrame`), which is what makes the customize step
-interactive without needing a canvas. There's no rasterized image to
-actually download yet — `exportStripAsImage()` in `js/pages/photostrip.js`
-is the marked hook for a future Canvas API implementation (draw each photo
-+ text + background onto a `<canvas>`, then `canvas.toBlob()`); the rest of
-the flow needs no changes once that lands.
-
-The film-perforation edge motif (`.perf-edge` in `css/styles.css`) is used
-**only** here, matching the design system's intent that this signature
-visual detail stays exclusive to the photobooth feature.
-
-### Future camera / photobooth mode
-
-Not implemented. `js/api.js` reserves the shape of it so it can be added
-without restructuring the builder:
-
-```javascript
-openCamera()       // throws "not implemented" today
-capturePhoto()
-captureSequence(count = 3)
-```
-
-The intended flow once built: open camera → countdown → capture → repeat →
-feed the captured images into the existing Step 1 photo selection.
+`exportStripAsImage()` in `js/pages/photostrip.js` is the marked hook for
+a future Canvas API rasterization — the rest of the flow needs no changes
+once that lands.
 
 ## 15. Feature Toggles
 
-```json
-{
-  "photos": true,
-  "videos": true,
-  "guestbook": true,
-  "photostrip": true
-}
+Per-event toggles stored in the `events` table:
+
+```
+photos_enabled        — photo uploads on/off
+videos_enabled        — video uploads on/off
+guestbook_enabled     — guestbook on/off
+photostrip_enabled    — photo strip builder on/off
+moderation_enabled    — pending-queue moderation on/off
+is_private            — gallery visible to guests or not
 ```
 
-(In code these are `photoUploadsEnabled`, `videoUploadsEnabled`,
-`guestbookEnabled`, `photoStripEnabled` on `event.settings`.)
-
-The frontend already respects these:
-- `guestbookEnabled: false` removes the Guestbook tab from the bottom nav
-  and desktop tabs, and replaces `guestbook.html`'s content with a calm
-  "Guestbook is off for this event" state instead of a composer that would
-  just fail.
-- `photoStripEnabled: false` removes the "Create Photo Strip" button and
-  the "More" sheet entry, and `photostrip.html` itself shows a disabled
-  state with a way back to the gallery if visited directly.
-- `videoUploadsEnabled: false` removes the "Videos" filter chip from the
-  gallery.
-- `photoUploadsEnabled` / `videoUploadsEnabled` narrow the upload modal's
-  `accept` attribute and its hint copy.
-
-These are enforced client-side only right now — see Section 19 for why that
-is explicitly **not** sufficient on its own.
+These are enforced both client-side (UI) and server-side (API).
 
 ## 16. Moderation
 
-Planned `moderation_enabled` behavior:
-
 ```
-If disabled:
-Upload → Approved → Gallery
+If moderation_enabled = false:
+Upload → approved → Gallery
 
-If enabled:
-Upload → Pending → Admin review → Approved / Hidden / Deleted
+If moderation_enabled = true:
+Upload → pending → Admin review → approved / hidden / deleted
 ```
 
-**Today**, every upload is immediately visible (no pending queue exists),
-and admin moderation is limited to Feature / Hide / Delete after the fact,
-via `admin/gallery.html` and `admin/guestbook.html`. Building a real
-pending-queue moderation mode is planned backend work.
+Admins moderate via `admin/gallery.html` and `admin/guestbook.html`.
 
 ## 17. API
 
-### Implemented
-
-None. There is no server, so there are no live endpoints. What exists is
-the **frontend contract** for them, described below.
-
-### Planned
+### Implemented endpoints
 
 ```
 POST   /api/admin/login
 POST   /api/admin/logout
+GET    /api/admin/me
+GET    /api/admin/my-events
 
-GET    /api/events
-POST   /api/events
-GET    /api/events/{id}
+GET    /api/events/default
 GET    /api/events/slug/{slug}
+GET    /api/events/{id}
 PATCH  /api/events/{id}
-DELETE /api/events/{id}
-
 GET    /api/events/{id}/admins
 POST   /api/events/{id}/admins
 DELETE /api/events/{id}/admins/{adminId}
-
-GET    /api/admins
-POST   /api/admins
-GET    /api/admins/{id}
-PATCH  /api/admins/{id}
-DELETE /api/admins/{id}
 
 POST   /api/events/{id}/guests
 
 GET    /api/events/{id}/photos
 POST   /api/events/{id}/photos
-
 GET    /api/events/{id}/videos
 POST   /api/events/{id}/videos
-
 GET    /api/events/{id}/guestbook
 POST   /api/events/{id}/guestbook
-
 POST   /api/events/{id}/photostrips
 
-GET    /api/admin/events/{id}
-PATCH  /api/admin/events/{id}
-DELETE /api/admin/photos/{id}
 PATCH  /api/admin/photos/{id}/feature
 PATCH  /api/admin/photos/{id}/visibility
+DELETE /api/admin/photos/{id}
+PATCH  /api/admin/videos/{id}/feature
+PATCH  /api/admin/videos/{id}/visibility
+DELETE /api/admin/videos/{id}
+PATCH  /api/admin/guestbook/{id}/visibility
 DELETE /api/admin/guestbook/{id}
-```
 
-Every one of these has a matching function in `js/api.js` today
-(`getEvent`, `getPhotos`, `uploadMedia`, `submitGuestbookMessage`,
-`createPhotoStrip`, `hidePhoto`, `featurePhoto`, `deletePhoto`,
-`hideMessage`, `deleteMessage`, `updateEventSettings`, …), currently backed
-by mock data + `localStorage` instead of a real request.
+GET    /api/super/dashboard
+GET    /api/super/events
+POST   /api/super/events
+GET    /api/super/events/{id}
+PUT    /api/super/events/{id}
+DELETE /api/super/events/{id}
+PATCH  /api/super/events/{id}/restore
+GET    /api/super/admins
+POST   /api/super/admins
+GET    /api/super/admins/{id}
+PUT    /api/super/admins/{id}
+PATCH  /api/super/admins/{id}/disable
+PATCH  /api/super/admins/{id}/enable
+PATCH  /api/super/admins/{id}/password
+GET    /api/super/guests
+GET    /api/super/logs
+GET    /api/super/settings
+PATCH  /api/super/settings
+```
 
 ## 18. API Response Format
 
-Planned shape, once the PHP API exists:
-
 **Success**
 ```json
-{
-  "success": true,
-  "data": {}
-}
+{ "success": true, "data": {} }
 ```
 
 **Error**
 ```json
-{
-  "success": false,
-  "error": {
-    "code": "FORBIDDEN",
-    "message": "You do not have permission."
-  }
-}
+{ "success": false, "error": { "code": "FORBIDDEN", "message": "You do not have permission." } }
 ```
 
-Planned status code usage: `200` success, `201` created, `400` validation
-error, `401` not authenticated, `403` authenticated but not authorized,
-`404` not found, `422` semantically invalid input, `429` rate limited,
-`500` unexpected server error. None of this is implemented yet — the
-frontend's mock `App.api` functions currently just resolve or throw a
-plain `Error`.
+Status codes: `200` success, `201` created, `400` validation error,
+`401` not authenticated, `403` forbidden, `404` not found, `409` conflict,
+`422` invalid input, `429` rate limited, `500` server error.
 
 ## 19. Security
 
-Planned requirements for the PHP backend:
-
-- PDO prepared statements for every query — no string-built SQL
+- PDO prepared statements for every query
 - `password_hash()` / `password_verify()` for admin credentials
-- Cryptographically random session tokens, stored hashed, never in plaintext
-- Authorization middleware on every admin route, checking role + event
-  assignment
-- Input validation on every field, file-type and file-size validation on
-  every upload
-- Rate limiting on auth and upload endpoints
-- Explicit CORS allow-list, not a wildcard
-- Secrets only in environment variables, never in Git
-- No credentials of any kind in frontend code
-- API error messages that never leak internals (stack traces, query text)
-
-**Explicitly documented because it's a common mistake:** hiding a button
-in the UI when `photoStripEnabled` is `false` is a UX nicety, not a
-security boundary. Every one of those toggles, and every admin action,
-**must** be re-checked server-side once the backend exists — a guest who
-edits `localStorage` or calls a future endpoint directly must still be
-correctly rejected.
+- PHP server-side sessions; session id regenerated on login
+- `AdminAuth` middleware on every admin route, checking role + event assignment
+- Input validation and file-type/size validation on every upload
+- Secrets only in `.env`, never committed
+- `js/dev-config.js` must not be deployed to production
 
 ## 20. Environment Variables
 
-Planned `.env.example` (not created yet — added alongside the backend):
+`.env.example` (copy to `.env` and fill in):
 
 ```
 APP_ENV=local
 APP_DEBUG=true
-APP_URL=http://localhost
+APP_URL=http://localhost:8000
 
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -575,121 +447,122 @@ DB_DATABASE=shared_event_gallery
 DB_USERNAME=root
 DB_PASSWORD=
 
-CORS_ALLOWED_ORIGINS=http://localhost:5500
-```
+CORS_ALLOWED_ORIGINS=http://localhost:5000,http://127.0.0.1:5000
 
-Google Drive variables (service account path, folder root id, etc.) will
-be added to this file when Drive integration is implemented. No real
-credentials are ever committed to this repository or written into this
-README.
+# Admin session lifetime in seconds (default: 8 hours)
+SESSION_LIFETIME=28800
+```
 
 ## 21. Installation
 
-**Frontend (available today):**
+### Option A — Docker (recommended)
 
 ```bash
-# no dependencies, no build step
-open index.html
-# or serve it so relative paths behave like production:
+docker-compose up -d
+```
+
+The app is served at `http://localhost:8081`. The database is initialized
+automatically. Then seed a Super Admin:
+
+```bash
+docker exec -it shared-event-gallery-app php backend/cli/create-admin.php
+```
+
+### Option B — Local PHP + MySQL
+
+```bash
+cd backend
+composer install
+mysql -u root -p shared_event_gallery < ../shared_event_gallery\ \(2\).sql
+cp .env.example .env
+# edit .env with local DB credentials
+php -S localhost:8000 -t public public/router.php
+```
+
+Open `index.html` directly or serve the frontend root:
+
+```bash
 npx serve .
 ```
 
-**Backend (planned — not runnable yet):**
-
-```bash
-composer install
-mysql -u root -p shared_event_gallery < backend/database/schema.sql
-cp .env.example .env
-# edit .env with local DB credentials
-php -S localhost:8000 -t backend/public
-```
-
-These backend commands describe the intended setup once `backend/`,
-`composer.json`, and the schema exist — they will not work against this
-repository as it stands today.
-
 ## 22. Initial Super Admin
 
-Planned: a CLI script that hashes a password server-side rather than ever
-writing one in plaintext anywhere, e.g.
+Use the CLI script to create the first Super Admin (hashes the password
+server-side, never writes it in plaintext):
 
 ```bash
 php backend/cli/create-admin.php
 ```
 
-Not implemented — there is no admin auth system yet for this to seed.
+For an Event Admin:
+
+```bash
+php backend/cli/create-event-admin.php
+```
 
 ## 23. Development
 
-**Frontend work:** edit files directly under `js/components/` (reusable
-render functions) or `js/pages/` (page controllers that wire components to
-`App.api`). Never have a page or component read `window.MOCK_DB` or
-`localStorage` directly — always go through `js/api.js`, so swapping in the
-real backend later is a change in one file per function, not a hunt across
-every page.
+**Frontend work:** edit files under `js/components/` or `js/pages/`. Never
+read `window.MOCK_DB` or `localStorage` directly from a page — always go
+through `js/api.js`.
 
-**Backend work (once started):** schema changes should ship as versioned
-migrations, not hand edits to a shared `schema.sql`. API changes should
-update Section 17 of this README in the same change.
+**Backend work:** schema changes should ship as versioned migrations. API
+changes should update Section 17 of this README in the same change.
 
-**Testing changes locally:** since there's no build step, a hard refresh
-after any JS edit is enough — there's no cache-busting or bundling to
-worry about.
+**Dev login:** `js/dev-config.js` provides a mock login so the admin UI
+works without a running PHP server. Credentials: `super@admin.com` /
+`admin123` (super_admin) and `event@admin.com` / `admin123` (event_admin).
+Remove this file before deploying.
 
 ## 24. Testing
 
-**Today:** the only checks that apply are frontend ones —
-`node --check` on every file under `js/` to catch syntax errors, and manual
-click-through of each guest and admin flow (see Section 28's checklist).
+Frontend syntax check:
 
-**Planned, once the backend exists:**
-- PHP syntax checks (`php -l`) on every file
-- Database connection check
-- Admin login (valid + invalid credentials)
-- Session expiration and revocation
-- Super Admin can reach any event; Event Admin cannot reach unassigned ones
-- Event CRUD (create, read, update, soft-delete)
-- Event ↔ admin assignment, including rejecting a duplicate assignment
-- Guest session issuance and expiry
+```bash
+node --check js/api.js
+node --check js/pages/gallery.js
+# etc.
+```
 
-How to run them once they exist: documented here when the test suite is
-added, rather than guessed at now.
+Backend:
+
+```bash
+php -l backend/src/Controllers/AuthController.php
+# etc.
+```
+
+Manual flows to verify after any change:
+- Guest: welcome → name entry → gallery → upload → guestbook → photo strip
+- Event Admin: login → dashboard → moderate gallery/guestbook → settings → QR
+- Super Admin: login → events list → create event → assign admin → logs
 
 ## 25. Frontend / Backend Integration
 
-`js/api.js` is the *only* place the frontend is allowed to reach for data.
-Pages and components call `App.api.getPhotos()`, never `window.MOCK_DB`
-directly, and never touch `localStorage` except through `App.session`.
+`js/api.js` is the only place the frontend reaches for data. Turning on
+the real backend is a rewrite of the function bodies inside `js/api.js`
+(swap `wait()` + `localStorage` for `fetch()` calls) with no changes
+required in `js/components/` or `js/pages/`.
 
 ```
 Frontend (pages/components)
     ↓
 js/api.js         ← the only integration seam
     ↓
-PHP REST API (planned)
+PHP REST API
     ↓
-MySQL / Google Drive (planned)
+MySQL / local filesystem
 ```
-
-This means turning on the real backend is, by design, a rewrite of the
-function *bodies* inside `js/api.js` — swap `wait()` + `localStorage` for
-`fetch()` calls — with no changes required in `js/components/` or
-`js/pages/`.
 
 ## 26. Development Roadmap
 
-- **Phase 1 — Backend foundation:** database schema, admin auth, RBAC,
-  event CRUD
-- **Phase 2 — Guest sessions:** server-issued guest tokens replacing the
-  client-generated `guestId`
-- **Phase 3 — Photo/video uploads:** real `FormData` endpoint, validation
-- **Phase 4 — Google Drive integration:** upload pipeline, thumbnailing
-- **Phase 5 — Gallery and Guestbook:** wire the existing frontend to real
-  data instead of mock/localStorage
-- **Phase 6 — Photo Strip:** persist configs server-side, Canvas-based
-  image export
-- **Phase 7 — QR code / event links:** server-generated, slug-aware URLs
-- **Phase 8 — Security hardening:** rate limiting, audit logging, CORS lock-down
+- **Phase 1 — Backend foundation** ✅ database schema, admin auth, RBAC, event CRUD
+- **Phase 2 — Guest sessions** ✅ server-issued guest tokens
+- **Phase 3 — Photo/video uploads** ✅ real FormData endpoint, validation, local storage
+- **Phase 4 — Gallery and Guestbook** ✅ real endpoints wired
+- **Phase 5 — Super Admin panel** ✅ events, admins, guests, logs, system settings
+- **Phase 6 — Photo Strip** — persist configs server-side, Canvas-based image export
+- **Phase 7 — Wire frontend to real API** — replace mock/localStorage in `js/api.js`
+- **Phase 8 — Security hardening** — rate limiting, audit logging, CORS lock-down
 - **Phase 9 — Production deployment**
 
 ## 27. Current Status
@@ -703,92 +576,100 @@ function *bodies* inside `js/api.js` — swap `wait()` + `localStorage` for
 - [x] Photo Strip Builder: 4 steps, 4 templates, independent download/share/add-to-gallery actions
 - [x] Mobile bottom navigation + floating "Share Memory" button
 - [x] Feature toggles hide disabled nav items and CTAs
-- [x] Basic accessibility pass: aria-labels on icon buttons, focus return on modal close, `prefers-reduced-motion` respected, alt text on media, Escape-to-close and Tab focus-trapping on all sheets/modals
+- [x] Accessibility: aria-labels, focus return on modal close, `prefers-reduced-motion`, Escape + Tab trap on all sheets/modals
 
-**Frontend (admin):**
+**Frontend (Event Admin):**
+- [x] Admin login screen with role-based redirect
 - [x] Dashboard with stat cards + recent activity feed
 - [x] Gallery moderation: feature/hide/delete, search, filter by guest and media type, confirmation modal
 - [x] Guestbook moderation: hide/delete, confirmation modal
-- [x] Event settings: Event Information / Branding / Features / Privacy sections, primary+secondary theme colors, feature toggles
+- [x] Event settings: Event Information / Branding / Features / Privacy sections
 - [x] QR code page: real scannable QR, copy link, download, print
-- [ ] Admin login screen
-- [ ] Any actual access control
+
+**Frontend (Super Admin):**
+- [x] Platform dashboard with aggregate stats
+- [x] Events list with search/filter + create event
+- [x] Event detail with admin assignment
+- [x] Admin user management (create, edit, enable/disable, reset password)
+- [x] Guest list across all events
+- [x] Activity log viewer
+- [x] System settings
 
 **Backend:**
-- [ ] Database schema
-- [ ] Admin authentication
-- [ ] Admin sessions
-- [ ] Role-based authorization
-- [ ] Event CRUD
-- [ ] Event Admin assignment
-- [ ] Activity logging
-- [ ] Guest sessions (server-issued)
-- [ ] Guest uploads (real endpoint)
-- [ ] Guestbook (real endpoint)
-- [ ] Gallery (real endpoint)
+- [x] Database schema (all tables, indexes, foreign keys)
+- [x] Admin authentication (login, logout, session, `/api/admin/me`)
+- [x] Role-based authorization (`AdminAuth` middleware)
+- [x] Event CRUD
+- [x] Event Admin assignment
+- [x] Activity logging
+- [x] Guest sessions (server-issued)
+- [x] Guest uploads (photos + videos, local filesystem)
+- [x] Guestbook endpoint
+- [x] Gallery endpoints (photos + videos)
+- [x] Photo strip endpoint
+- [x] Super Admin API (events, admins, guests, logs, settings)
+- [x] CLI scripts for seeding admins
 
 **Storage:**
-- [ ] Google Drive integration
+- [x] Local filesystem storage (`backend/storage/uploads/`)
+- [ ] Google Drive integration (not planned for current phase)
 
 **Photo Strip:**
-- [ ] Backend integration (persisting configs, generating a real image)
+- [ ] Canvas-based image export (hook exists in `exportStripAsImage()`)
+- [ ] Frontend wired to real API (still using mock/localStorage)
+
+**Frontend ↔ Backend wiring:**
+- [ ] `js/api.js` still uses mock data + localStorage — needs to be switched to real `fetch()` calls
 
 **Production:**
-- [ ] Security hardening
+- [ ] Rate limiting
+- [ ] Full security hardening
 - [ ] Deployment
 
-## 28. Changelog / Development Notes
+## 28. Changelog
 
-## Changelog
+### 0.4.0
+- Backend fully implemented: PHP REST API, all controllers, `AdminAuth` /
+  `GuestAuth` middleware, `Database` / `Request` / `Response` / `Router` /
+  `Uploader` core classes
+- Database schema created (`shared_event_gallery (2).sql`) — all tables,
+  indexes, and foreign keys
+- Admin login screen (`admin/login.html`) with role-based redirect:
+  Super Admins → `super/dashboard.html`, Event Admins → `dashboard.html`
+- Super Admin panel added: `admin/super/` with dashboard, events, event
+  detail, admins, guests, logs, and settings pages; `js/components/superShell.js`
+- `js/dev-config.js` added for local dev login bypass without a running
+  PHP server
+- `App.session.requireAdminOrRedirect()` added to all admin pages
+- Docker support: `Dockerfile`, `docker-compose.yml` (app + MariaDB 11.4),
+  `.dockerignore`
+- CLI scripts: `backend/cli/create-admin.php`,
+  `backend/cli/create-event-admin.php`
+- Local filesystem storage replaces planned Google Drive integration for
+  current phase; Drive folder id columns reserved in schema for future use
+- `serve.json` added for `npx serve` frontend serving
 
 ### 0.3.0
-- Admin Settings reorganized into the four documented sections: **Event
-  Information**, **Branding** (now with separate primary/secondary color
-  pickers), **Features**, and a new **Privacy** section with Private
-  gallery, Guest uploads, and Moderation toggles (Moderation is saved but
-  has no effect yet — there's no pending-review queue until the backend
-  exists; the settings page says so explicitly rather than implying it works)
-- Generic overlay handling (`App.ui.initOverlays`) now closes the currently
-  open sheet/modal on <kbd>Escape</kbd> and traps <kbd>Tab</kbd> focus
-  within it, covering the "More" sheet, Event Info modal, and Upload modal
-  the same way the lightbox already did
-- Fixed a focus-trap edge case where closing the upload modal via Escape
-  could leave its file queue in a stale state on reopen — Escape now
-  reuses the modal's own close handler instead of bypassing it
+- Admin Settings reorganized into four sections: Event Information,
+  Branding (separate primary/secondary color pickers), Features, Privacy
+- Generic overlay handling (`App.ui.initOverlays`) — Escape closes and Tab
+  is trapped in any open sheet/modal
+- Fixed focus-trap edge case on upload modal Escape close
 
 ### 0.2.0
-- Feature toggles now hide disabled nav items/CTAs across guest pages
-  instead of only being read on the settings screen
-- Upload modal reworked: per-file retry, "Uploading N memories…" /
-  "shared! ❤️" / per-file error states, failed files no longer discard
-  already-successful ones
-- Lightbox: native `navigator.share()` with clipboard fallback, real
-  download trigger, touch swipe navigation, minimal focus trap, aria labels
-- Photo Strip: final step decoupled into three independent actions
-  (Download / Share / Add to Event Gallery) so the guest is never forced to
-  publish; added the `exportStripAsImage()` hook for a future Canvas export;
-  step 1 supports swapping an individual photo by tapping it again
-- Added `openCamera()` / `capturePhoto()` / `captureSequence()` stubs in
-  `js/api.js` reserved for a future in-browser photobooth mode
-- Added `App.api.buildUploadFormData()` documenting the real multipart
-  request shape production uploads should use instead of base64
-- Mock media records now carry `thumbUrl` / `mediumUrl` / `originalUrl`
-  so the frontend is ready for real image derivatives
-- Admin: added search + media-type filter to gallery moderation; replaced
-  native `confirm()` with an in-system confirmation modal
-  (`App.ui.confirm()`) on both gallery and guestbook moderation
-- Admin dashboard: added a grouped "recent activity" feed alongside the
-  existing latest-messages panel
-- Guestbook and gallery pages gained explicit network-error states with a
-  retry button; gallery empty state now includes a "Share Memory" button
-- Guest session (`App.session`) now tracks a `guestId` alongside the name,
-  with a reserved slot for a server-issued `sessionToken`
+- Feature toggles hide disabled nav items/CTAs across guest pages
+- Upload modal reworked: per-file retry, uploading/success/error states
+- Lightbox: native share, real download, swipe nav, focus trap, aria labels
+- Photo Strip: three independent final actions; `exportStripAsImage()` hook;
+  step 1 photo swap; `openCamera()` / `capturePhoto()` / `captureSequence()` stubs
+- `App.api.buildUploadFormData()` documents the real multipart request shape
+- Mock media records carry `thumbUrl` / `mediumUrl` / `originalUrl`
+- Admin gallery: search + media-type filter; `App.ui.confirm()` modal
+- Admin dashboard: grouped recent activity feed
+- Guestbook + gallery: network-error states with retry
+- Guest session tracks `guestId` + reserved `sessionToken` slot
 
 ### 0.1.0
-- Initial frontend prototype: welcome screen, gallery, guestbook, photo
-  strip builder, admin dashboard/gallery/guestbook/settings/QR pages, mock
-  data layer, and the `js/api.js` contract these are built against
-
-Future changes — especially anything that starts the backend — should be
-added here, and Section 27 above updated in the same change so this
-document never drifts from what's actually implemented.
+- Initial frontend prototype: welcome, gallery, guestbook, photo strip
+  builder, admin dashboard/gallery/guestbook/settings/QR, mock data layer,
+  `js/api.js` contract

@@ -80,7 +80,7 @@
           <a href="gallery.html?event_id=${ev.id}" class="text-[13px] font-semibold text-primary-600">Manage gallery \u2192</a>
         </div>
         <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
-          ${[...photos].slice(0, 12).map(p => `<img src="${p.thumbUrl}" class="w-full aspect-square object-cover rounded-lg" />`).join('')}
+          ${[...photos].slice(0, 12).map(p => `<img src="${p.thumbUrl ? (p.thumbUrl.startsWith('http') ? p.thumbUrl : (window.API_BASE || '') + p.thumbUrl) : ''}" class="w-full aspect-square object-cover rounded-lg" />`).join('')}
         </div>
       </div>
       <div class="bg-white rounded-2xl border border-ink-100 p-5 shadow-soft">

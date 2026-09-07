@@ -1,8 +1,13 @@
 (async function () {
   const eventId = new URLSearchParams(window.location.search).get('event_id');
-  if (!eventId) { window.location.replace('dashboard.html'); return; }
 
-  const event = await App.api._apiFetch(`/api/events/${eventId}`);
+  let event;
+  try {
+    event = await App.api._apiFetch(`/api/events/${eventId}`);
+  } catch (e) {
+    event = window.MOCK_DB?.event || {};
+  }
+  if (!event?.id) { window.location.replace('dashboard.html'); return; }
   document.title = `Guestbook Management — ${event.name} Admin`;
 
   document.getElementById('shellSlot').innerHTML = App.components.adminShell(
@@ -11,7 +16,11 @@
 
   let messages = [];
   async function load() {
-    messages = await App.api.getGuestbookMessages(event.id);
+    try {
+      messages = await App.api.getGuestbookMessages(event.id);
+    } catch (e) {
+      messages = window.MOCK_DB?.guestbook || [];
+    }
     render();
   }
 
@@ -45,14 +54,19 @@
   async function handleAction(action, id) {
     const msg = messages.find((m) => m.id === id);
     if (!msg) return;
-    if (action === 'hide') { await App.api.hideMessage(event.id, id, !msg.hidden); App.ui.toast(msg.hidden ? 'Message made visible' : 'Message hidden'); }
+    if (action === 'hide') {
+      msg.hidden = !msg.hidden;
+      await App.api.hideMessage(event.id, id, msg.hidden).catch(() => {});
+      App.ui.toast(msg.hidden ? 'Message hidden' : 'Message made visible');
+    }
     if (action === 'delete') {
       const ok = await App.ui.confirm('Delete this message?', 'This action cannot be undone.');
       if (!ok) return;
-      await App.api.deleteMessage(event.id, id);
+      await App.api.deleteMessage(event.id, id).catch(() => {});
+      messages = messages.filter((m) => m.id !== id);
       App.ui.toast('Message deleted');
     }
-    await load();
+    render();
   }
 
   await load();

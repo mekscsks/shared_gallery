@@ -6,6 +6,7 @@ use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
 use App\Middleware\AdminAuth;
+use App\Controllers\VideoController;
 
 class AdminController
 {
@@ -121,6 +122,61 @@ class AdminController
 
         self::log($db, $request, $photo['event_id'], 'photo_deleted', 'photo', $photoId);
         Response::json(['id' => $photoId, 'deleted' => true]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Videos
+    // -------------------------------------------------------------------------
+
+    /** PATCH /api/admin/videos/{id}/feature */
+    public static function featureVideo(Request $request): void
+    {
+        $videoId = (int) ($request->params['id'] ?? 0);
+        $db      = Database::get();
+
+        $video = self::findVideo($db, $videoId);
+        AdminAuth::requireEventAccess($request, (int) $video['event_id']);
+
+        $featured = (bool) $request->input('featured', true);
+        $db->prepare('UPDATE videos SET is_featured = ? WHERE id = ?')
+           ->execute([$featured ? 1 : 0, $videoId]);
+
+        self::log($db, $request, $video['event_id'], $featured ? 'video_featured' : 'video_unfeatured', 'video', $videoId);
+        Response::json(VideoController::format(self::findVideo($db, $videoId)));
+    }
+
+    /** PATCH /api/admin/videos/{id}/visibility */
+    public static function hideVideo(Request $request): void
+    {
+        $videoId = (int) ($request->params['id'] ?? 0);
+        $db      = Database::get();
+
+        $video     = self::findVideo($db, $videoId);
+        AdminAuth::requireEventAccess($request, (int) $video['event_id']);
+
+        $hidden    = (bool) $request->input('hidden', true);
+        $newStatus = $hidden ? 'hidden' : 'approved';
+        $db->prepare('UPDATE videos SET status = ? WHERE id = ?')
+           ->execute([$newStatus, $videoId]);
+
+        self::log($db, $request, $video['event_id'], $hidden ? 'video_hidden' : 'video_shown', 'video', $videoId);
+        Response::json(VideoController::format(self::findVideo($db, $videoId)));
+    }
+
+    /** DELETE /api/admin/videos/{id} */
+    public static function deleteVideo(Request $request): void
+    {
+        $videoId = (int) ($request->params['id'] ?? 0);
+        $db      = Database::get();
+
+        $video = self::findVideo($db, $videoId);
+        AdminAuth::requireEventAccess($request, (int) $video['event_id']);
+
+        $db->prepare("UPDATE videos SET status = 'deleted', deleted_at = NOW() WHERE id = ?")
+           ->execute([$videoId]);
+
+        self::log($db, $request, $video['event_id'], 'video_deleted', 'video', $videoId);
+        Response::json(['id' => $videoId, 'deleted' => true]);
     }
 
     // -------------------------------------------------------------------------
@@ -262,6 +318,18 @@ class AdminController
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         if (!$row) Response::error('Photo not found', 404);
+        return $row;
+    }
+
+    /** @return array<string,mixed> */
+    private static function findVideo(\PDO $db, int $id): array
+    {
+        $stmt = $db->prepare(
+            'SELECT v.*, g.name AS uploader_name FROM videos v LEFT JOIN guests g ON g.id = v.guest_id WHERE v.id = ? AND v.deleted_at IS NULL LIMIT 1'
+        );
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        if (!$row) Response::error('Video not found', 404);
         return $row;
     }
 

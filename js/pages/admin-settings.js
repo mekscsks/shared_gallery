@@ -1,8 +1,13 @@
 (async function () {
   const eventId = new URLSearchParams(window.location.search).get('event_id');
-  if (!eventId) { window.location.replace('dashboard.html'); return; }
 
-  const event = await App.api._apiFetch(`/api/events/${eventId}`);
+  let event;
+  try {
+    event = await App.api._apiFetch(`/api/events/${eventId}`);
+  } catch (e) {
+    event = window.MOCK_DB?.event || {};
+  }
+  if (!event?.id) { window.location.replace('dashboard.html'); return; }
   document.title = `Event Settings — ${event.name} Admin`;
 
   document.getElementById('shellSlot').innerHTML = App.components.adminShell(

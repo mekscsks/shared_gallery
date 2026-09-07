@@ -25,12 +25,14 @@
       <label for="emailInput" class="text-[13px] font-semibold text-ink-600 mb-1.5 block">Email</label>
       <input id="emailInput" type="email" autocomplete="email" required
         class="w-full rounded-xl border border-ink-200 px-4 py-2.5 text-[15px] focus:border-primary-400 focus:ring-0" />
+      <p id="emailError" class="hidden text-xs text-red-500 mt-1"></p>
     </div>
 
     <div>
       <label for="passwordInput" class="text-[13px] font-semibold text-ink-600 mb-1.5 block">Password</label>
       <input id="passwordInput" type="password" autocomplete="current-password" required
         class="w-full rounded-xl border border-ink-200 px-4 py-2.5 text-[15px] focus:border-primary-400 focus:ring-0" />
+      <p id="passwordError" class="hidden text-xs text-red-500 mt-1"></p>
     </div>
 
     <button type="submit" id="loginBtn"
@@ -62,6 +64,9 @@
   const btn         = document.getElementById('loginBtn');
   const errorBanner = document.getElementById('errorBanner');
 
+  const emailError    = document.getElementById('emailError');
+  const passwordError  = document.getElementById('passwordError');
+
   function showError(msg) {
     errorBanner.textContent = msg;
     errorBanner.classList.remove('hidden');
@@ -69,18 +74,26 @@
   function clearError() {
     errorBanner.classList.add('hidden');
   }
+  function setFieldError(input, errorEl, msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.toggle('hidden', !msg);
+    input.classList.toggle('border-red-400', !!msg);
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearError();
+    setFieldError(emailInput, emailError, '');
+    setFieldError(passInput, passwordError, '');
 
     const email    = emailInput.value.trim();
     const password = passInput.value;
 
-    if (!email || !password) {
-      showError('Email and password are required.');
-      return;
-    }   
+    let valid = true;
+    if (!email) { setFieldError(emailInput, emailError, 'Email is required.'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFieldError(emailInput, emailError, 'Enter a valid email.'); valid = false; }
+    if (!password) { setFieldError(passInput, passwordError, 'Password is required.'); valid = false; }
+    if (!valid) return;   
 
     btn.disabled    = true;
     btn.textContent = 'Signing in…';
