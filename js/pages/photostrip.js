@@ -2,7 +2,16 @@
   App.session.requireGuestOrRedirect();
   const guestName = App.session.getGuestName();
   const slug = App.session.getEventSlug();
-  const event = await App.api.getEvent(slug);
+
+  let event;
+  try {
+    if (!slug) throw Object.assign(new Error(), { status: 404 });
+    event = await App.api.getEvent(slug);
+  } catch (e) {
+    event = (window.MOCK_DB && slug === window.MOCK_DB.event.slug) ? window.MOCK_DB.event : null;
+    if (!event) { window.location.href = `index.html?event=${slug}`; return; }
+  }
+
   document.title = `Photo Strip — ${event.name}`;
   document.querySelector('a[href="gallery.html"]')?.setAttribute('href', `gallery.html?event=${slug}`);
 
@@ -158,27 +167,59 @@
     document.getElementById('livePreviewSlot').innerHTML = App.components.photoStripFrame(selectedPhotos(), currentTemplate(), state.config);
   }
 
-  // The strip currently renders as live HTML/CSS (App.components.photoStripFrame),
-  // not a rasterized image — there is no canvas pixel buffer to export yet.
-  // This is the intended hook: swap this function's body for real Canvas API
-  // drawing (draw each photo + text + background onto a <canvas>, then
-  // canvas.toBlob()) once that's implemented, and the rest of the flow
-  // (buttons, gallery toggle) needs no changes.
   async function exportStripAsImage() {
-    return null; // placeholder — no rasterized image available in this prototype
+    const el = document.querySelector('#finalPreviewSlot .perf-edge');
+    if (!el) return null;
+    const canvas = await html2canvas(el, { useCORS: true, scale: 2, backgroundColor: null });
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   }
 
   function wireFinalStep() {
     document.getElementById('downloadStripBtn').addEventListener('click', async () => {
-      await exportStripAsImage();
-      App.ui.toast('Photo strip saved to your device', { icon: '\u2b07\ufe0f' });
+      const btn = document.getElementById('downloadStripBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving\u2026';
+      try {
+        const blob = await exportStripAsImage();
+        if (!blob) throw new Error('no blob');
+        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const file = new File([blob], 'photo-strip.png', { type: 'image/png' });
+        // iOS Safari doesn't support <a download> — use Web Share API with files instead.
+        // On desktop, always use direct download regardless of canShare support.
+        if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: `${event.name} photo strip` });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'photo-strip.png';
+          document.body.appendChild(a); a.click();
+          setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+        }
+        App.ui.toast('Photo strip saved! \u2b07\ufe0f');
+      } catch (e) {
+        if (e.name !== 'AbortError') App.ui.toast('Could not save \u2014 try again', { icon: '\u26a0\ufe0f' });
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 3v13m0 0-4-4m4 4 4-4M5 21h14"/></svg> Download Photo Strip';
+      }
     });
     document.getElementById('shareStripBtn').addEventListener('click', async () => {
-      if (navigator.share) {
-        try { await navigator.share({ title: `${event.name} photo strip`, text: 'Check out my photo strip!' }); }
-        catch (e) { /* user cancelled the share sheet */ }
-      } else {
-        App.ui.toast('Share sheet opened', { icon: '\ud83d\udd17' });
+      const btn = document.getElementById('shareStripBtn');
+      btn.disabled = true;
+      try {
+        const blob = await exportStripAsImage();
+        const file = blob ? new File([blob], 'photo-strip.png', { type: 'image/png' }) : null;
+        if (navigator.share) {
+          const shareData = { title: `${event.name} photo strip`, text: 'Check out my photo strip!' };
+          if (file && navigator.canShare && navigator.canShare({ files: [file] })) shareData.files = [file];
+          await navigator.share(shareData);
+        } else {
+          App.ui.toast('Sharing not supported on this browser', { icon: '\ud83d\udd17' });
+        }
+      } catch (e) {
+        if (e.name !== 'AbortError') App.ui.toast('Could not share \u2014 try again', { icon: '\u26a0\ufe0f' });
+      } finally {
+        btn.disabled = false;
       }
     });
     const addBtn = document.getElementById('addToGalleryBtn');

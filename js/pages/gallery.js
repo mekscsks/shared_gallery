@@ -3,7 +3,14 @@
   const guestName = App.session.getGuestName();
   const slug = App.session.getEventSlug();
 
-  const event = await App.api.getEvent(slug);
+  let event;
+  try {
+    event = await App.api.getEvent(slug);
+  } catch (e) {
+    event = (window.MOCK_DB && slug === window.MOCK_DB.event.slug) ? window.MOCK_DB.event : null;
+    if (!event) { window.location.href = `index.html?event=${slug}`; return; }
+  }
+
   document.title = `Gallery — ${event.name}`;
 
   const settings = event.settings || {};
